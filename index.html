@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>モザイク図を作る - 統計検定3級学習サポート</title>
+  <meta name="description" content="統計検定3級受験者向けに、クロス集計表の数値を変更してモザイク図の仕組みを直感的かつ視覚的に学習できるインタラクティブツールです。パステル調の優しいデザインと滑らかなアニメーションで、モザイク図の読み取り方を楽しくマスターできます。">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* --- デザインシステム & 変数 --- */
+    :root {
+      /* パステルカラーパレット */
+      --bg-gradient-start: #f5f7fa;
+      --bg-gradient-end: #e4e9f2;
+      
+      --card-bg: rgba(255, 255, 255, 0.85);
+      --card-border: rgba(255, 255, 255, 0.6);
+      --card-shadow: 0 8px 32px 0 rgba(148, 163, 184, 0.08), 0 4px 8px 0 rgba(148, 163, 184, 0.04);
+      
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --text-light: #94a3b8;
+      
+      --accent-primary: #818cf8; /* パステルインディゴ */
+      --accent-primary-light: #e0e7ff;
+      --border-color: #e2e8f0;
+      
+      /* 美容品使用状況のカラー定義（パステル調） */
+      --color-daily-bg: #d1fae5;       /* パステルグリーン */
+      --color-daily-border: #34d399;
+      --color-daily-text: #065f46;
+      
+      --color-ever-bg: #fef3c7;        /* パステルイエロー */
+      --color-ever-border: #fbbf24;
+      --color-ever-text: #92400e;
+      
+      --color-never-bg: #ffe4e6;       /* パステルピンク */
+      --color-never-border: #fb7185;
+      --color-never-text: #991b1b;
+
+      /* 性別関連の色 */
+      --color-male-bg: #e0f2fe;        /* パステルブルー */
+      --color-male-text: #0369a1;
+      --color-female-bg: #fce7f3;      /* パステルラベンダーピンク */
+      --color-female-text: #be185d;
+      
+      --font-outfit: 'Outfit', 'Noto Sans JP', sans-serif;
+      --font-inter: 'Inter', 'Noto Sans JP', sans-serif;
+    }
+
+    /* --- 基本スタイル --- */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-inter);
+      background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      line-height: 1.6;
+      padding: 2rem 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    /* --- ヘッダー --- */
+    header {
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+
+    header h1 {
+      font-family: var(--font-outfit);
+      font-size: 2.5rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.025em;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      font-weight: 500;
+    }
+
+    header .badge {
+      display: inline-block;
+      background-color: var(--accent-primary-light);
+      color: #4f46e5;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-top: 0.5rem;
+      border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+
+    /* --- メインコンテンツ（2カラムレイアウト） --- */
+    .app-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 2rem;
+      width: 100%;
+    }
+
+    @media (max-width: 1024px) {
+      .app-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* --- カードスタイル --- */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: var(--card-shadow);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+      box-shadow: 0 12px 40px 0 rgba(148, 163, 184, 0.12);
+    }
+
+    .card-title {
+      font-family: var(--font-outfit);
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: var(--text-main);
+      border-bottom: 2px solid var(--border-color);
+      padding-bottom: 0.75rem;
+    }
+
+    .card-title svg {
+      width: 24px;
+      height: 24px;
+      color: var(--accent-primary);
+    }
+
+    /* --- 左ペイン：モザイク図エリア --- */
+    .mosaic-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .svg-wrapper {
+      width: 100%;
+      aspect-ratio: 1.2 / 1;
+      max-height: 500px;
+      position: relative;
+    }
+
+    svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    /* SVG要素のアニメーション設定 */
+    .mosaic-rect {
+      cursor: pointer;
+      rx: 4px; /* 角を少し丸める */
+      ry: 4px;
+      transition: x 0.6s cubic-bezier(0.16, 1, 0.3, 1), 
+                  y 0.6s cubic-bezier(0.16, 1, 0.3, 1), 
+                  width 0.6s cubic-bezier(0.16, 1, 0.3, 1), 
+                  height 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+                  fill 0.3s ease,
+                  opacity 0.2s ease;
+    }
+
+    .mosaic-rect:hover {
+      filter: brightness(0.97);
+      stroke-width: 2px;
+    }
+
+    .grid-line {
+      stroke: #cbd5e1;
+      stroke-width: 1px;
+      stroke-dasharray: 4, 4;
+      transition: y1 0.6s ease, y2 0.6s ease;
+    }
+
+    .axis-label {
+      font-family: var(--font-inter);
+      font-size: 13px;
+      font-weight: 600;
+      fill: var(--text-muted);
+      user-select: none;
+    }
+
+    .axis-title {
+      font-family: var(--font-outfit);
+      font-size: 14px;
+      font-weight: 700;
+      fill: var(--text-main);
+      user-select: none;
+    }
+
+    .rect-label {
+      font-family: var(--font-inter);
+      font-size: 12px;
+      font-weight: 600;
+      fill: var(--text-main);
+      pointer-events: none; /* マウスホバーを邪魔しない */
+      text-anchor: middle;
+      dominant-baseline: middle;
+      transition: x 0.6s cubic-bezier(0.16, 1, 0.3, 1), 
+                  y 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+                  opacity 0.3s ease;
+    }
+
+    /* 凡例 */
+    .legend {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .legend-color {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      border: 1.5px solid rgba(0, 0, 0, 0.05);
+    }
+
+    /* ツールチップ */
+    .tooltip {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      z-index: 10;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      backdrop-filter: blur(5px);
+      line-height: 1.4;
+    }
+
+    .tooltip-title {
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .tooltip-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 1.5rem;
+      margin-top: 0.25rem;
+    }
+
+    .tooltip-value {
+      font-weight: 600;
+    }
+
+    /* --- 右ペイン：クロス集計表エリア --- */
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+      margin-bottom: 1.5rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #ffffff;
+    }
+
+    th, td {
+      padding: 1rem 0.75rem;
+      text-align: center;
+      border-bottom: 1px solid var(--border-color);
+      border-right: 1px solid var(--border-color);
+    }
+
+    th:last-child, td:last-child {
+      border-right: none;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    th {
+      background-color: #f8fafc;
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    /* 特定のヘッダー列のデザイン */
+    .col-header-daily { border-top: 3px solid var(--color-daily-border); }
+    .col-header-ever { border-top: 3px solid var(--color-ever-border); }
+    .col-header-never { border-top: 3px solid var(--color-never-border); }
+
+    .row-header-male {
+      background-color: var(--color-male-bg);
+      color: var(--color-male-text);
+      font-weight: 700;
+    }
+    
+    .row-header-female {
+      background-color: var(--color-female-bg);
+      color: var(--color-female-text);
+      font-weight: 700;
+    }
+
+    .total-cell {
+      background-color: #f1f5f9;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    /* インプットボックス */
+    .cell-input {
+      width: 100%;
+      max-width: 80px;
+      padding: 0.5rem;
+      border: 1.5px solid var(--border-color);
+      border-radius: 8px;
+      font-family: var(--font-inter);
+      font-size: 1rem;
+      font-weight: 600;
+      text-align: center;
+      color: var(--text-main);
+      background-color: #fafafa;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+
+    .cell-input:focus {
+      border-color: var(--accent-primary);
+      background-color: #ffffff;
+      box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.2);
+    }
+
+    /* スピンボタンを消す */
+    .cell-input::-webkit-outer-spin-button,
+    .cell-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .cell-input[type=number] {
+      -moz-appearance: textfield;
+    }
+
+    /* プリセットアクション */
+    .presets-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .presets-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+    }
+
+    .preset-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    @media (max-width: 480px) {
+      .preset-buttons {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .btn {
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      background-color: #ffffff;
+      color: var(--text-main);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    }
+
+    .btn:hover {
+      background-color: #f8fafc;
+      border-color: var(--accent-primary);
+      color: #4f46e5;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-primary {
+      background-color: var(--accent-primary-light);
+      border-color: rgba(99, 102, 241, 0.2);
+      color: #4f46e5;
+    }
+
+    .btn-primary:hover {
+      background-color: #c7d2fe;
+      color: #3730a3;
+    }
+
+    /* --- 学習ガイドエリア --- */
+    .guide-card {
+      margin-top: 1rem;
+      border-left: 5px solid var(--accent-primary);
+    }
+
+    .guide-grid {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 2rem;
+    }
+
+    @media (max-width: 768px) {
+      .guide-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .guide-text h3 {
+      font-family: var(--font-outfit);
+      font-size: 1.15rem;
+      margin-bottom: 0.75rem;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .guide-text p {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+
+    .point-list {
+      list-style-type: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .point-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      background-color: rgba(255, 255, 255, 0.5);
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+    }
+
+    .point-num {
+      background-color: var(--accent-primary-light);
+      color: #4f46e5;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+
+    .point-content {
+      font-size: 0.9rem;
+      color: var(--text-main);
+    }
+
+    .point-content strong {
+      color: #4f46e5;
+    }
+
+    /* クイズ・対話コーナー */
+    .quiz-box {
+      background-color: rgba(255, 255, 255, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .quiz-question {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .quiz-hint {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      background-color: #ffffff;
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      border-left: 3px solid #cbd5e1;
+      display: none;
+      line-height: 1.5;
+    }
+
+    .show-hint-btn {
+      align-self: flex-start;
+      font-size: 0.8rem;
+      color: #4f46e5;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      text-decoration: underline;
+    }
+
+    /* フッター */
+    footer {
+      margin-top: 3rem;
+      text-align: center;
+      color: var(--text-light);
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    footer a {
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- ヘッダー -->
+    <header>
+      <span class="badge">統計検定® 3級対策サポート</span>
+      <h1 id="app-title">モザイク図を作る</h1>
+      <p>クロス集計表に数値を入力して、モザイク図の仕組みを体感しよう</p>
+    </header>
+
+    <!-- メインコンテンツグリッド -->
+    <div class="app-grid">
+      
+      <!-- 左：モザイク図カード -->
+      <div class="card mosaic-container" id="mosaic-card">
+        <h2 class="card-title">
+          <!-- グラフのアイコン -->
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
+          </svg>
+          モザイク図
+        </h2>
+        
+        <div class="svg-wrapper">
+          <svg id="mosaic-svg" viewBox="0 0 600 500">
+            <!-- 背景グリッド線 (25%, 50%, 75%) -->
+            <line class="grid-line" x1="50" y1="339" x2="570" y2="339" /> <!-- 25% -->
+            <line class="grid-line" x1="50" y1="236" x2="570" y2="236" /> <!-- 50% -->
+            <line class="grid-line" x1="50" y1="133" x2="570" y2="133" /> <!-- 75% -->
+            
+            <!-- 軸と境界線 -->
+            <!-- 縦軸 -->
+            <line x1="50" y1="30" x2="50" y2="442" stroke="#94a3b8" stroke-width="1.5" />
+            <!-- 横軸 -->
+            <line x1="50" y1="442" x2="570" y2="442" stroke="#94a3b8" stroke-width="1.5" />
+
+            <!-- 縦軸目盛りラベル -->
+            <text class="axis-label" x="42" y="34" text-anchor="end" dominant-baseline="middle">100%</text>
+            <text class="axis-label" x="42" y="136" text-anchor="end" dominant-baseline="middle">75%</text>
+            <text class="axis-label" x="42" y="239" text-anchor="end" dominant-baseline="middle">50%</text>
+            <text class="axis-label" x="42" y="342" text-anchor="end" dominant-baseline="middle">25%</text>
+            <text class="axis-label" x="42" y="445" text-anchor="end" dominant-baseline="middle">0%</text>
+
+            <!-- グラフ軸タイトル -->
+            <text class="axis-title" x="25" y="15" text-anchor="middle">使用割合</text>
+            <text class="axis-title" x="580" y="458" text-anchor="start">性別</text>
+
+            <!-- メインの描画グループ -->
+            <g id="plot-area">
+              <!-- JSで動的に長方形とテキストラベルを生成 -->
+            </g>
+
+            <!-- 横軸（性別）のラベル配置用のグループ -->
+            <g id="axis-x-labels">
+              <!-- JSで動的に生成 -->
+            </g>
+          </svg>
+        </div>
+
+        <!-- 凡例 -->
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-color" style="background-color: var(--color-daily-bg); border-color: var(--color-daily-border);"></div>
+            <span>毎日使用</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background-color: var(--color-ever-bg); border-color: var(--color-ever-border);"></div>
+            <span>使用したことがある</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background-color: var(--color-never-bg); border-color: var(--color-never-border);"></div>
+            <span>使用したことがない</span>
+          </div>
+        </div>
+
+        <!-- ツールチップ（マウスホバー時に表示） -->
+        <div id="tooltip" class="tooltip"></div>
+      </div>
+
+      <!-- 右：クロス集計表 & 操作パネル -->
+      <div class="card" id="table-card">
+        <h2 class="card-title">
+          <!-- 表のアイコン -->
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
+          </svg>
+          クロス集計表（数値入力）
+        </h2>
+
+        <!-- クロス集計表 -->
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th rowspan="2">性別</th>
+                <th colspan="3">美容品の使用状況</th>
+                <th rowspan="2" class="total-cell">合計</th>
+              </tr>
+              <tr>
+                <th class="col-header-daily">毎日使用</th>
+                <th class="col-header-ever">使用したこと<br>がある</th>
+                <th class="col-header-never">使用したこと<br>がない</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- 男性行 -->
+              <tr>
+                <td class="row-header-male">男性</td>
+                <td>
+                  <input type="number" id="input-male-daily" class="cell-input" min="0" step="1" value="20" aria-label="男性の毎日使用人数">
+                </td>
+                <td>
+                  <input type="number" id="input-male-ever" class="cell-input" min="0" step="1" value="30" aria-label="男性の使用経験あり人数">
+                </td>
+                <td>
+                  <input type="number" id="input-male-never" class="cell-input" min="0" step="1" value="50" aria-label="男性の使用経験なし人数">
+                </td>
+                <td id="total-male" class="total-cell">100</td>
+              </tr>
+              <!-- 女性行 -->
+              <tr>
+                <td class="row-header-female">女性</td>
+                <td>
+                  <input type="number" id="input-female-daily" class="cell-input" min="0" step="1" value="60" aria-label="女性の毎日使用人数">
+                </td>
+                <td>
+                  <input type="number" id="input-female-ever" class="cell-input" min="0" step="1" value="30" aria-label="女性の使用経験あり人数">
+                </td>
+                <td>
+                  <input type="number" id="input-female-never" class="cell-input" min="0" step="1" value="10" aria-label="女性の使用経験なし人数">
+                </td>
+                <td id="total-female" class="total-cell">100</td>
+              </tr>
+              <!-- 合計行 -->
+              <tr class="total-cell">
+                <td>合計</td>
+                <td id="total-daily">80</td>
+                <td id="total-ever">60</td>
+                <td id="total-never">60</td>
+                <td id="total-all" style="background-color: var(--accent-primary-light); color: #4f46e5; font-size: 1.1rem;">200</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- プリセット選択 -->
+        <div class="presets-container">
+          <p class="presets-title">体験パターン（プリセット）</p>
+          <div class="preset-buttons">
+            <button class="btn" id="preset-diff" title="男女で使用習慣の差が非常に大きい状態">
+              👉 男女差が大きい
+            </button>
+            <button class="btn" id="preset-same" title="男女で使用習慣の割合が全く同じ状態">
+              ⚖️ 男女差がない
+            </button>
+            <button class="btn" id="preset-female-many" title="女性の調査人数が男性の4倍多い状態">
+              👩 女性がとても多い
+            </button>
+            <button class="btn btn-primary" id="preset-reset" title="初期状態に戻す">
+              🔄 リセット
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 下：学習ガイド -->
+    <div class="card guide-card">
+      <h2 class="card-title">
+        <!-- 本のアイコン -->
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+        </svg>
+        統計検定® 3級レベル！モザイク図の読み方マスター
+      </h2>
+      
+      <div class="guide-grid">
+        <div class="guide-text">
+          <h3>モザイク図を読み取る3つのポイント</h3>
+          <p>モザイク図は、2つの分類項目（例：性別と美容品の使用状況）の間の関連性を、四角形の面積で表した図です。帯グラフとの違いを意識しながら理解しましょう。</p>
+          
+          <ul class="point-list">
+            <li class="point-item">
+              <span class="point-num">1</span>
+              <div class="point-content">
+                <strong>横軸 of 幅 ＝ 周辺相対度数</strong><br>
+                「男性」と「女性」の横幅は、全体の人数に占めるそれぞれの割合を表します。「女性がとても多い」ボタンを押して横幅の変化を確認してみましょう。
+              </div>
+            </li>
+            <li class="point-item">
+              <span class="point-num">2</span>
+              <div class="point-content">
+                <strong>縦の分割 ＝ 条件付き相対度数</strong><br>
+                各列（男性・女性）の中での縦方向の比率は、その性別の中での使用割合（条件付き相対度数）を表します。高さの合計はどちらも100%になります。
+              </div>
+            </li>
+            <li class="point-item">
+              <span class="point-num">3</span>
+              <div class="point-content">
+                <strong>四角形の面積 ＝ 各セルの度数（人数）</strong><br>
+                各ブロックの面積は、そのセルの度数（例えば「毎日使用する男性の人数」）に比例します。視覚的に「最も人数が多いグループ」がどこかを面積で把握できます。
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="quiz-box">
+          <h3>💡 考えてみよう！</h3>
+          <div class="quiz-question">
+            Q. 「男女差がない」ボタンを押したとき、モザイク図の「縦の仕切り境界線」はどうなっているでしょうか？
+          </div>
+          <button class="show-hint-btn" id="btn-show-hint">答えと解説を表示する</button>
+          <div class="quiz-hint" id="quiz-hint-content">
+            <strong>答え: 境界線がすべて横に真っ直ぐ繋がります。</strong><br><br>
+            男女の間で使用状況の比率（条件付き相対度数）が全く同じ（＝関連性がない、独立である）場合、それぞれの高さの比率が等しくなるため、横に真っ直ぐ並ぶことになります。<br>
+            逆に、「男女差が大きい」ときは、境界線の高さが階段状に大きくズレます。このズレが大きいほど、2つの項目に関連性があるといえます。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>© 2026 モザイク図を作る - 統計検定®3級学習サポートツール | <a href="#" onclick="alert('リロードすると初期状態（男性100人、女性100人の均等調査データ）に戻ります。'); return false;">ヘルプ</a></p>
+  </footer>
+
+  <script>
+    // --- 定数定義 ---
+    const SVG_WIDTH = 600;
+    const SVG_HEIGHT = 500;
+    const PLOT_MARGIN = { top: 30, right: 30, bottom: 50, left: 50 };
+    const PLOT_WIDTH = SVG_WIDTH - PLOT_MARGIN.left - PLOT_MARGIN.right;
+    const PLOT_HEIGHT = SVG_HEIGHT - PLOT_MARGIN.top - PLOT_MARGIN.bottom;
+    const COLUMN_GAP = 8; // 男性列と女性列の隙間(px)
+    const BLOCK_GAP = 4;  // 各使用頻度ブロック間の隙間(px)
+
+    // 美容品使用状況のカラーマップ
+    const COLOR_MAP = {
+      daily: { bg: 'var(--color-daily-bg)', border: 'var(--color-daily-border)', text: 'var(--color-daily-text)', label: '毎日' },
+      ever: { bg: 'var(--color-ever-bg)', border: 'var(--color-ever-border)', text: 'var(--color-ever-text)', label: 'ある' },
+      never: { bg: 'var(--color-never-bg)', border: 'var(--color-never-border)', text: 'var(--color-never-text)', label: 'ない' }
+    };
+
+    // 初期データ
+    const INITIAL_DATA = {
+      male: { daily: 20, ever: 30, never: 50 },
+      female: { daily: 60, ever: 30, never: 10 }
+    };
+
+    // プリセットデータ
+    const PRESETS = {
+      reset: INITIAL_DATA,
+      diff: {
+        male: { daily: 5, ever: 15, never: 80 },
+        female: { daily: 70, ever: 25, never: 5 }
+      },
+      same: {
+        male: { daily: 30, ever: 50, never: 20 },
+        female: { daily: 30, ever: 50, never: 20 }
+      },
+      femaleMany: {
+        male: { daily: 10, ever: 15, never: 25 }, // 合計50人
+        female: { daily: 120, ever: 60, never: 20 } // 合計200人
+      }
+    };
+
+    // --- DOM要素の参照 ---
+    const inputs = {
+      male: {
+        daily: document.getElementById('input-male-daily'),
+        ever: document.getElementById('input-male-ever'),
+        never: document.getElementById('input-male-never')
+      },
+      female: {
+        daily: document.getElementById('input-female-daily'),
+        ever: document.getElementById('input-female-ever'),
+        never: document.getElementById('input-female-never')
+      }
+    };
+
+    const totals = {
+      male: document.getElementById('total-male'),
+      female: document.getElementById('total-female'),
+      daily: document.getElementById('total-daily'),
+      ever: document.getElementById('total-ever'),
+      never: document.getElementById('total-never'),
+      all: document.getElementById('total-all')
+    };
+
+    const plotArea = document.getElementById('plot-area');
+    const axisXLabels = document.getElementById('axis-x-labels');
+    const tooltip = document.getElementById('tooltip');
+
+    // --- メインロジック ---
+
+    // データの読み込みと集計
+    function getValues() {
+      const maleDaily = Math.max(0, parseInt(inputs.male.daily.value) || 0);
+      const maleEver = Math.max(0, parseInt(inputs.male.ever.value) || 0);
+      const maleNever = Math.max(0, parseInt(inputs.male.never.value) || 0);
+
+      const femaleDaily = Math.max(0, parseInt(inputs.female.daily.value) || 0);
+      const femaleEver = Math.max(0, parseInt(inputs.female.ever.value) || 0);
+      const femaleNever = Math.max(0, parseInt(inputs.female.never.value) || 0);
+
+      const totalMale = maleDaily + maleEver + maleNever;
+      const totalFemale = femaleDaily + femaleEver + femaleNever;
+
+      const totalDaily = maleDaily + femaleDaily;
+      const totalEver = maleEver + femaleEver;
+      const totalNever = maleNever + femaleNever;
+      const totalAll = totalMale + totalFemale;
+
+      return {
+        data: {
+          male: { daily: maleDaily, ever: maleEver, never: maleNever, total: totalMale },
+          female: { daily: femaleDaily, ever: femaleEver, never: femaleNever, total: totalFemale }
+        },
+        totals: {
+          daily: totalDaily,
+          ever: totalEver,
+          never: totalNever,
+          all: totalAll
+        }
+      };
+    }
+
+    // クロス集計表のUIを更新
+    function updateTableUI(summary) {
+      // 合計セルのテキストを更新
+      totals.male.textContent = summary.data.male.total;
+      totals.female.textContent = summary.data.female.total;
+      totals.daily.textContent = summary.totals.daily;
+      totals.ever.textContent = summary.totals.ever;
+      totals.never.textContent = summary.totals.never;
+      totals.all.textContent = summary.totals.all;
+    }
+
+    // モザイク図（SVG）の描画更新
+    function updateMosaicPlot(summary) {
+      const { data, totals } = summary;
+      const totalAll = totals.all;
+
+      // 古い要素がある程度クリアされるように初期化。
+      // ただし、トランジションを持たせるために、既存の rect 要素と text 要素を再利用するのが理想。
+      // もし要素がなければ新規に作成し、あれば属性を更新する。
+      
+      // 性別の配列
+      const genders = ['male', 'female'];
+      // 使用状況の配列（上から描画する順）
+      const categories = ['daily', 'ever', 'never'];
+
+      // 列幅の計算
+      let wMale = 0;
+      let wFemale = 0;
+      const availableWidth = PLOT_WIDTH - COLUMN_GAP;
+
+      if (totalAll > 0) {
+        wMale = availableWidth * (data.male.total / totalAll);
+        wFemale = availableWidth * (data.female.total / totalAll);
+      } else {
+        // 全員0の場合、50:50にする
+        wMale = availableWidth / 2;
+        wFemale = availableWidth / 2;
+      }
+
+      const widths = {
+        male: wMale,
+        female: wFemale
+      };
+
+      const xCoords = {
+        male: PLOT_MARGIN.left,
+        female: PLOT_MARGIN.left + wMale + COLUMN_GAP
+      };
+
+      // 各セルの描画更新
+      let elementIndex = 0;
+      genders.forEach(gender => {
+        const genderTotal = data[gender].total;
+        const colWidth = widths[gender];
+        const colX = xCoords[gender];
+        
+        let currentY = PLOT_MARGIN.top;
+        const availableHeight = PLOT_HEIGHT - (BLOCK_GAP * 2);
+
+        categories.forEach(cat => {
+          const val = data[gender][cat];
+          let blockHeight = 0;
+
+          if (genderTotal > 0) {
+            blockHeight = availableHeight * (val / genderTotal);
+          } else {
+            // その性別の合計が0なら均等分割
+            blockHeight = availableHeight / 3;
+          }
+
+          // IDを元に既存 of rect/text を取得、なければ作成
+          const rectId = `rect-${gender}-${cat}`;
+          const labelId = `label-${gender}-${cat}`;
+          
+          let rect = document.getElementById(rectId);
+          if (!rect) {
+            rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('id', rectId);
+            rect.setAttribute('class', 'mosaic-rect');
+            rect.setAttribute('stroke-width', '1.5');
+            plotArea.appendChild(rect);
+          }
+
+          // スタイル設定（パステル調）
+          rect.setAttribute('fill', COLOR_MAP[cat].bg);
+          rect.setAttribute('stroke', COLOR_MAP[cat].border);
+
+          // 座標とサイズ設定（CSS transitionが効く）
+          rect.setAttribute('x', colX);
+          rect.setAttribute('y', currentY);
+          rect.setAttribute('width', colWidth);
+          rect.setAttribute('height', blockHeight);
+
+          // ホバー・ツールチップのイベント設定
+          rect.onmouseenter = (e) => showTooltip(e, gender, cat, val, genderTotal, totalAll);
+          rect.onmousemove = (e) => moveTooltip(e);
+          rect.onmouseleave = () => hideTooltip();
+
+          // テキストラベル（比率など）
+          let text = document.getElementById(labelId);
+          if (!text) {
+            text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('id', labelId);
+            text.setAttribute('class', 'rect-label');
+            plotArea.appendChild(text);
+          }
+
+          // テキストの座標設定（長方形の中央）
+          const textX = colX + colWidth / 2;
+          const textY = currentY + blockHeight / 2;
+          text.setAttribute('x', textX);
+          text.setAttribute('y', textY);
+
+          // テキストの表示制御（幅と高さが十分なときだけ表示する）
+          const pctGender = genderTotal > 0 ? (val / genderTotal * 100).toFixed(1) : '0.0';
+          if (colWidth > 45 && blockHeight > 25 && val > 0) {
+            text.textContent = `${val}人 (${parseFloat(pctGender)}%)`;
+            text.setAttribute('opacity', '1');
+            // 文字色をコントラストに合わせる
+            text.setAttribute('fill', COLOR_MAP[cat].text);
+          } else {
+            text.textContent = '';
+            text.setAttribute('opacity', '0');
+          }
+
+          currentY += blockHeight + BLOCK_GAP;
+        });
+
+        // X軸（性別）のラベルの更新
+        const xLabelId = `xlabel-${gender}`;
+        let xLabel = document.getElementById(xLabelId);
+        if (!xLabel) {
+          xLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          xLabel.setAttribute('id', xLabelId);
+          xLabel.setAttribute('class', 'axis-label');
+          xLabel.setAttribute('text-anchor', 'middle');
+          // Y座標はプロットエリアの下部
+          xLabel.setAttribute('y', PLOT_MARGIN.top + PLOT_HEIGHT + 25);
+          axisXLabels.appendChild(xLabel);
+        }
+
+        const labelText = gender === 'male' ? '男性' : '女性';
+        const pctAll = totalAll > 0 ? (genderTotal / totalAll * 100).toFixed(1) : '50.0';
+        
+        // 横幅がラベル表示に十分な場合
+        if (colWidth > 40) {
+          xLabel.textContent = `${labelText} (${parseFloat(pctAll)}%)`;
+          xLabel.setAttribute('x', colX + colWidth / 2);
+          xLabel.setAttribute('opacity', '1');
+        } else if (colWidth > 15) {
+          xLabel.textContent = labelText;
+          xLabel.setAttribute('x', colX + colWidth / 2);
+          xLabel.setAttribute('opacity', '1');
+        } else {
+          xLabel.setAttribute('opacity', '0');
+        }
+      });
+
+      // 古い不要なX軸ラベルがあれば消す（移行用）
+      ['daily', 'ever', 'never'].forEach(c => {
+        const oldLabel = document.getElementById(`xlabel-${c}`);
+        if (oldLabel) oldLabel.remove();
+      });
+    }
+
+    // ツールチップ表示
+    function showTooltip(e, gender, cat, val, genderTotal, totalAll) {
+      const genderName = gender === 'male' ? '男性' : '女性';
+      const catName = COLOR_MAP[cat].label;
+      const pctGender = genderTotal > 0 ? (val / genderTotal * 100).toFixed(1) : '0.0';
+      const pctAll = totalAll > 0 ? (val / totalAll * 100).toFixed(1) : '0.0';
+      const genderPctOfAll = totalAll > 0 ? (genderTotal / totalAll * 100).toFixed(1) : '0.0';
+
+      let genderColorClass = gender === 'male' ? 'color-male-text' : 'color-female-text';
+      let catColor = COLOR_MAP[cat].text;
+
+      tooltip.innerHTML = `
+        <div class="tooltip-title">
+          <span style="display:inline-block; width:12px; height:12px; border-radius:3px; background:${COLOR_MAP[cat].bg}; border:1px solid ${COLOR_MAP[cat].border};"></span>
+          <span>${genderName} &times; ${catName}</span>
+        </div>
+        <div class="tooltip-row">
+          <span>回答者数 (度数):</span>
+          <span class="tooltip-value">${val} 人</span>
+        </div>
+        <div class="tooltip-row">
+          <span>${genderName}内での割合:</span>
+          <span class="tooltip-value" style="color: ${catColor}">${pctGender}%</span>
+        </div>
+        <div class="tooltip-row">
+          <span>全体に占める割合:</span>
+          <span class="tooltip-value">${pctAll}%</span>
+        </div>
+        <div class="tooltip-row" style="font-size:0.75rem; color:var(--text-light); margin-top:0.4rem; border-top:1px dashed var(--border-color); padding-top:0.3rem;">
+          <span>※ ${genderName}全体の比率:</span>
+          <span>${genderPctOfAll}%</span>
+        </div>
+      `;
+
+      tooltip.style.opacity = '1';
+    }
+
+    // ツールチップ移動
+    function moveTooltip(e) {
+      // ツールチップの位置をマウスカーソルの位置に調整
+      const offset = 15;
+      
+      // スクロール分も考慮して画面絶対座標からコンテナ相対座標に変換
+      const containerRect = document.getElementById('mosaic-card').getBoundingClientRect();
+      const x = e.clientX - containerRect.left + offset;
+      const y = e.clientY - containerRect.top + offset;
+
+      tooltip.style.left = `${x}px`;
+      tooltip.style.top = `${y}px`;
+    }
+
+    // ツールチップ非表示
+    function hideTooltip() {
+      tooltip.style.opacity = '0';
+    }
+
+    // アプリケーション全体の更新
+    function updateApp() {
+      const summary = getValues();
+      updateTableUI(summary);
+      updateMosaicPlot(summary);
+    }
+
+    // プリセットの適用
+    function applyPreset(presetName) {
+      const preset = PRESETS[presetName];
+      if (!preset) return;
+
+      inputs.male.daily.value = preset.male.daily;
+      inputs.male.ever.value = preset.male.ever;
+      inputs.male.never.value = preset.male.never;
+
+      inputs.female.daily.value = preset.female.daily;
+      inputs.female.ever.value = preset.female.ever;
+      inputs.female.never.value = preset.female.never;
+
+      updateApp();
+    }
+
+    // --- イベントリスナーの登録 ---
+
+    // 入力値変更イベント
+    Object.keys(inputs).forEach(gender => {
+      Object.keys(inputs[gender]).forEach(cat => {
+        inputs[gender][cat].addEventListener('input', () => {
+          // 負の値が入った場合は0にする
+          if (inputs[gender][cat].value < 0) {
+            inputs[gender][cat].value = 0;
+          }
+          updateApp();
+        });
+        
+        // フォーカスアウト時、空だったら0を入れる
+        inputs[gender][cat].addEventListener('blur', () => {
+          if (inputs[gender][cat].value === '') {
+            inputs[gender][cat].value = 0;
+            updateApp();
+          }
+        });
+      });
+    });
+
+    // プリセットボタン
+    document.getElementById('preset-diff').addEventListener('click', () => applyPreset('diff'));
+    document.getElementById('preset-same').addEventListener('click', () => applyPreset('same'));
+    document.getElementById('preset-female-many').addEventListener('click', () => applyPreset('femaleMany'));
+    document.getElementById('preset-reset').addEventListener('click', () => applyPreset('reset'));
+
+    // クイズのヒント表示
+    const btnShowHint = document.getElementById('btn-show-hint');
+    const quizHintContent = document.getElementById('quiz-hint-content');
+    btnShowHint.addEventListener('click', () => {
+      if (quizHintContent.style.display === 'block') {
+        quizHintContent.style.display = 'none';
+        btnShowHint.textContent = '答えと解説を表示する';
+      } else {
+        quizHintContent.style.display = 'block';
+        btnShowHint.textContent = '解説を隠す';
+      }
+    });
+
+    // 初期ロード時の実行
+    window.addEventListener('DOMContentLoaded', () => {
+      applyPreset('reset');
+    });
+
+  </script>
+</body>
+</html>
