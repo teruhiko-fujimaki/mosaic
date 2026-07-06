@@ -115,6 +115,49 @@
       border: 1px solid rgba(99, 102, 241, 0.2);
     }
 
+    /* --- ナビゲーションバー --- */
+    .nav-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .nav-tab {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.25rem;
+      border-radius: 12px;
+      text-decoration: none;
+      font-family: var(--font-outfit);
+      font-weight: 700;
+      font-size: 0.95rem;
+      transition: all 0.2s ease;
+      border: 1px solid var(--border-color);
+      background-color: rgba(255, 255, 255, 0.5);
+      color: var(--text-muted);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    }
+
+    .nav-tab:hover {
+      background-color: rgba(255, 255, 255, 0.8);
+      color: var(--accent-primary);
+      transform: translateY(-1px);
+    }
+
+    .nav-tab.active {
+      background-color: var(--accent-primary);
+      color: #ffffff;
+      border-color: var(--accent-primary);
+      box-shadow: 0 4px 12px rgba(129, 140, 248, 0.3);
+    }
+
+    .nav-tab svg {
+      width: 18px;
+      height: 18px;
+    }
+
     /* --- メインコンテンツ（2カラムレイアウト） --- */
     .app-grid {
       display: grid;
@@ -603,6 +646,29 @@
       <h1 id="app-title">モザイク図を作る</h1>
       <p>クロス集計表に数値を入力して、モザイク図の仕組みを体感しよう</p>
     </header>
+
+    <!-- ページ切り替えナビゲーション -->
+    <nav class="nav-tabs">
+      <a href="index.html" class="nav-tab active">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
+        </svg>
+        モザイク図
+      </a>
+      <a href="boxplot.html" class="nav-tab">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v4M12 17v4M8 7h8v10H8V7Z" />
+        </svg>
+        箱ひげ図
+      </a>
+      <a href="compare.html" class="nav-tab">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        分布の比較
+      </a>
+    </nav>
 
     <!-- メインコンテンツグリッド -->
     <div class="app-grid">

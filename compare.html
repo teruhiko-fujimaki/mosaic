@@ -1,0 +1,1816 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>分布を比較する（ヒストグラム ＆ 箱ひげ図） - 統計検定3級学習サポート</title>
+  <meta name="description" content="同じデータからヒストグラムと横型箱ひげ図を同じスケールで上下に並べて同時描画し、データの分布形状と四分位数・中央値・平均値の視覚的な対応関係を直感的に学ぶ学習ツールです。">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* --- デザインシステム & 変数 --- */
+    :root {
+      --bg-gradient-start: #f5f7fa;
+      --bg-gradient-end: #e4e9f2;
+      
+      --card-bg: rgba(255, 255, 255, 0.85);
+      --card-border: rgba(255, 255, 255, 0.6);
+      --card-shadow: 0 8px 32px 0 rgba(148, 163, 184, 0.08), 0 4px 8px 0 rgba(148, 163, 184, 0.04);
+      
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --text-light: #94a3b8;
+      
+      --accent-primary: #818cf8; /* パステルインディゴ */
+      --accent-primary-light: #e0e7ff;
+      --border-color: #e2e8f0;
+
+      /* グラフカラー（パステル） */
+      --color-hist-bg: #e0e7ff;       /* パステルインディゴ */
+      --color-hist-border: #818cf8;
+      --color-box-bg: #ffe4e6;        /* パステルローズ */
+      --color-box-border: #fb7185;
+      --color-box-text: #991b1b;
+      
+      --font-outfit: 'Outfit', 'Noto Sans JP', sans-serif;
+      --font-inter: 'Inter', 'Noto Sans JP', sans-serif;
+    }
+
+    /* --- 基本スタイル --- */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-inter);
+      background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      line-height: 1.6;
+      padding: 2rem 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1250px;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    /* --- ヘッダー --- */
+    header {
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+
+    header h1 {
+      font-family: var(--font-outfit);
+      font-size: 2.5rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.025em;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      font-weight: 500;
+    }
+
+    header .badge {
+      display: inline-block;
+      background-color: var(--accent-primary-light);
+      color: #4f46e5;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-top: 0.5rem;
+      border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+
+    /* --- ナビゲーションバー --- */
+    .nav-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .nav-tab {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.25rem;
+      border-radius: 12px;
+      text-decoration: none;
+      font-family: var(--font-outfit);
+      font-weight: 700;
+      font-size: 0.95rem;
+      transition: all 0.2s ease;
+      border: 1px solid var(--border-color);
+      background-color: rgba(255, 255, 255, 0.5);
+      color: var(--text-muted);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    }
+
+    .nav-tab:hover {
+      background-color: rgba(255, 255, 255, 0.8);
+      color: var(--accent-primary);
+      transform: translateY(-1px);
+    }
+
+    .nav-tab.active {
+      background-color: var(--accent-primary);
+      color: #ffffff;
+      border-color: var(--accent-primary);
+      box-shadow: 0 4px 12px rgba(129, 140, 248, 0.3);
+    }
+
+    .nav-tab svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* --- メインコンテンツ（2カラムレイアウト） --- */
+    .app-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.3fr;
+      gap: 2rem;
+      width: 100%;
+    }
+
+    @media (max-width: 1024px) {
+      .app-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* --- カードスタイル --- */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: var(--card-shadow);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+      box-shadow: 0 12px 40px 0 rgba(148, 163, 184, 0.12);
+    }
+
+    .card-title {
+      font-family: var(--font-outfit);
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-main);
+      border-bottom: 2px solid var(--border-color);
+      padding-bottom: 0.75rem;
+    }
+
+    .title-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .card-title svg {
+      width: 24px;
+      height: 24px;
+      color: var(--accent-primary);
+    }
+
+    /* --- 左ペイン：データ入力＆コントロール --- */
+    .input-section {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .input-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .help-icon {
+      cursor: pointer;
+      color: var(--accent-primary);
+      font-size: 0.8rem;
+      text-decoration: underline;
+    }
+
+    .csv-textarea {
+      width: 100%;
+      height: 100px;
+      padding: 0.6rem;
+      border: 1.5px solid var(--border-color);
+      border-radius: 10px;
+      font-family: monospace;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      background-color: #fafafa;
+      resize: vertical;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .csv-textarea:focus {
+      border-color: var(--accent-primary);
+      background-color: #ffffff;
+      box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.2);
+    }
+
+    .sheet-input-wrapper {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .text-input {
+      flex: 1;
+      padding: 0.5rem 0.75rem;
+      border: 1.5px solid var(--border-color);
+      border-radius: 10px;
+      font-family: var(--font-inter);
+      font-size: 0.85rem;
+      color: var(--text-main);
+      background-color: #fafafa;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .text-input:focus {
+      border-color: var(--accent-primary);
+      background-color: #ffffff;
+      box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.2);
+    }
+
+    .btn {
+      padding: 0.5rem 1rem;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background-color: #ffffff;
+      color: var(--text-main);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    }
+
+    .btn:hover {
+      background-color: #f8fafc;
+      border-color: var(--accent-primary);
+      color: #4f46e5;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .btn-primary {
+      background-color: var(--accent-primary);
+      color: #ffffff;
+      border-color: var(--accent-primary);
+    }
+
+    .btn-primary:hover {
+      background-color: #6366f1;
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    .presets-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .preset-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .preset-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.4rem;
+    }
+
+    /* ビン数調整スライダー */
+    .slider-container {
+      background: rgba(248, 250, 252, 0.9);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .slider-val {
+      font-size: 1rem;
+      color: #4f46e5;
+      font-family: var(--font-outfit);
+    }
+
+    .range-input {
+      width: 100%;
+      height: 6px;
+      background: #cbd5e1;
+      border-radius: 3px;
+      outline: none;
+      accent-color: var(--accent-primary);
+      cursor: pointer;
+    }
+
+    /* 列選択 */
+    .mapping-container {
+      background: rgba(248, 250, 252, 0.8);
+      border: 1px dashed var(--border-color);
+      border-radius: 12px;
+      padding: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .select-input {
+      width: 100%;
+      padding: 0.45rem;
+      border: 1.5px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-main);
+      background-color: #ffffff;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* プレビューテーブル */
+    .preview-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .preview-table-wrapper {
+      max-height: 100px;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    .preview-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+      text-align: left;
+    }
+
+    .preview-table th, .preview-table td {
+      padding: 0.35rem 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+      border-right: 1px solid var(--border-color);
+    }
+
+    .preview-table th {
+      background-color: #f8fafc;
+      font-weight: 700;
+      color: var(--text-muted);
+      position: sticky;
+      top: 0;
+    }
+
+    /* ステータスメッセージ */
+    .status-msg {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.4rem 0.6rem;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .status-success {
+      background-color: #d1fae5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+    }
+
+    .status-error {
+      background-color: #ffe4e6;
+      color: #991b1b;
+      border: 1px solid #fecdd3;
+    }
+
+    /* --- 右ペイン：グラフ同時描画エリア --- */
+    .plots-card {
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .svg-wrapper {
+      width: 100%;
+      aspect-ratio: 1.3 / 1.1;
+      max-height: 580px;
+      position: relative;
+    }
+
+    svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    /* ヒストグラム・箱ひげ図のアニメーション・スタイル */
+    .hist-bar {
+      fill: var(--color-hist-bg);
+      stroke: var(--color-hist-border);
+      stroke-width: 1.5px;
+      rx: 2px;
+      ry: 2px;
+      cursor: pointer;
+      transition: y 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+                  height 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+                  x 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+                  width 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .hist-bar:hover {
+      filter: brightness(0.97);
+    }
+
+    .box-rect {
+      fill: var(--color-box-bg);
+      stroke: var(--color-box-border);
+      stroke-width: 2px;
+      rx: 4px;
+      ry: 4px;
+      cursor: pointer;
+      transition: x 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+                  width 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .box-rect:hover {
+      filter: brightness(0.97);
+    }
+
+    .whisker-line, .median-line, .box-whisker-vertical {
+      stroke: var(--color-box-border);
+      stroke-width: 2px;
+      stroke-linecap: round;
+      transition: x1 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+                  x2 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .median-line {
+      stroke: var(--color-box-text);
+      stroke-width: 2.5px;
+    }
+
+    .mean-marker {
+      stroke: #475569;
+      stroke-width: 2.5px;
+      transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .outlier-circle {
+      fill: #ffffff;
+      stroke: var(--color-box-border);
+      stroke-width: 2px;
+      cursor: pointer;
+      transition: cx 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+                  r 0.2s ease;
+    }
+
+    .outlier-circle:hover {
+      r: 6.5px;
+    }
+
+    .grid-line {
+      stroke: #e2e8f0;
+      stroke-width: 1px;
+      stroke-dasharray: 4, 4;
+    }
+
+    .axis-line {
+      stroke: #94a3b8;
+      stroke-width: 1.5px;
+    }
+
+    .axis-label {
+      font-family: var(--font-inter);
+      font-size: 11px;
+      font-weight: 600;
+      fill: var(--text-muted);
+      user-select: none;
+    }
+
+    .axis-title {
+      font-family: var(--font-outfit);
+      font-size: 12px;
+      font-weight: 700;
+      fill: var(--text-main);
+      user-select: none;
+    }
+
+    /* ツールチップ */
+    .tooltip {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      z-index: 10;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      backdrop-filter: blur(5px);
+      line-height: 1.4;
+      min-width: 180px;
+    }
+
+    .tooltip-title {
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .tooltip-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 1.5rem;
+      margin-top: 0.2rem;
+    }
+
+    .tooltip-value {
+      font-weight: 600;
+      font-family: var(--font-inter);
+    }
+
+    /* オプション */
+    .options-container {
+      display: flex;
+      gap: 1rem;
+      margin-top: 0.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .option-checkbox-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .option-checkbox-wrapper input {
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+    }
+
+    /* --- 解説＆クイズ（下部） --- */
+    .guide-grid {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 2rem;
+      width: 100%;
+    }
+
+    @media (max-width: 1024px) {
+      .guide-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .guide-list {
+      list-style-type: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .guide-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      background-color: rgba(255, 255, 255, 0.5);
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+    }
+
+    .guide-badge {
+      background-color: var(--accent-primary-light);
+      color: #4f46e5;
+      padding: 0.1rem 0.5rem;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+    }
+
+    .guide-content {
+      font-size: 0.9rem;
+      color: var(--text-main);
+    }
+
+    .guide-content strong {
+      color: #4f46e5;
+    }
+
+    .quiz-box {
+      background-color: rgba(255, 255, 255, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .quiz-question {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .quiz-hint {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      background-color: #ffffff;
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      border-left: 3px solid #cbd5e1;
+      display: none;
+      line-height: 1.5;
+    }
+
+    .show-hint-btn {
+      align-self: flex-start;
+      font-size: 0.8rem;
+      color: #4f46e5;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      text-decoration: underline;
+    }
+
+    /* モーダル */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-content {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 2rem;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-light);
+    }
+
+    .modal-close:hover {
+      color: var(--text-main);
+    }
+
+    .modal-body {
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    .modal-body ol {
+      margin-left: 1.25rem;
+      margin-top: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    /* フッター */
+    footer {
+      margin-top: 3rem;
+      text-align: center;
+      color: var(--text-light);
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    footer a {
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- ヘッダー -->
+    <header>
+      <span class="badge">統計検定® 3級対策サポート</span>
+      <h1 id="app-title">分布を比較する</h1>
+      <p>同じデータから、ヒストグラム（分布形状）と箱ひげ図（要約統計量）を同一スケールで並べて関係性を理解しよう</p>
+    </header>
+
+    <!-- ページ切り替えナビゲーション -->
+    <nav class="nav-tabs">
+      <a href="index.html" class="nav-tab">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
+        </svg>
+        モザイク図
+      </a>
+      <a href="boxplot.html" class="nav-tab">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v4M12 17v4M8 7h8v10H8V7Z" />
+        </svg>
+        箱ひげ図
+      </a>
+      <a href="compare.html" class="nav-tab active">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        分布の比較
+      </a>
+    </nav>
+
+    <!-- メインコンテンツグリッド -->
+    <div class="app-grid">
+      
+      <!-- 左：データ入力＆コントロール -->
+      <div class="card input-section">
+        <h2 class="card-title">
+          <span class="title-left">
+            <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+            データの読み込み
+          </span>
+        </h2>
+
+        <!-- Googleスプレッドシート -->
+        <div class="input-group">
+          <div class="input-label">
+            <span>Googleスプレッドシートの指定</span>
+            <span class="help-icon" id="gsheet-help-link">連携方法のヘルプ</span>
+          </div>
+          <div class="sheet-input-wrapper">
+            <input type="text" id="input-sheet-url" class="text-input" placeholder="共有またはウェブ公開されたURLを入力">
+            <button id="btn-load-sheet" class="btn btn-primary">読み込む</button>
+          </div>
+        </div>
+
+        <!-- CSVテキスト貼り付け -->
+        <div class="input-group">
+          <span class="input-label">CSV/TSVテキストの貼り付け / アップロード</span>
+          <textarea id="input-csv-text" class="csv-textarea" placeholder="CSVをここに貼り付けるか、下のサンプルを選んでください"></textarea>
+          <button id="btn-parse-text" class="btn" style="margin-top: 0.25rem;">データを解析</button>
+        </div>
+
+        <!-- ステータス -->
+        <div id="status-message" class="status-msg"></div>
+
+        <!-- サンプル選択 -->
+        <div class="presets-container">
+          <span class="preset-title">分布学習用サンプルデータ</span>
+          <div class="preset-buttons">
+            <button class="btn" id="preset-normal">① 左右対称な分布 (正規分布型)</button>
+            <button class="btn" id="preset-skewed-right">② 右に裾が長い分布 (所得型)</button>
+            <button class="btn" id="preset-skewed-left">③ 左に裾が長い分布 (高得点型)</button>
+            <button class="btn" id="preset-bimodal">④ 山が2つある分布 (混合型)</button>
+          </div>
+        </div>
+
+        <!-- パラメータコントロール -->
+        <div class="slider-container">
+          <div class="slider-header">
+            <span>ヒストグラムの階級（ビン）の数</span>
+            <span class="slider-val" id="bin-count-val">10</span>
+          </div>
+          <input type="range" id="input-bin-count" class="range-input" min="4" max="25" value="10">
+        </div>
+
+        <!-- マッピング -->
+        <div class="input-group">
+          <span class="input-label">分析する列の指定</span>
+          <div class="mapping-container">
+            <span class="preset-title">数値データ (Y軸)</span>
+            <select id="select-y-col" class="select-input">
+              <option value="">（列を選択）</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- プレビュー -->
+        <div class="preview-section" id="preview-section" style="display: none;">
+          <span class="preset-title">データプレビュー (最初の5行)</span>
+          <div class="preview-table-wrapper">
+            <table class="preview-table" id="preview-table">
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右：グラフ同時描画 -->
+      <div class="card plots-card" id="plots-card">
+        <h2 class="card-title">
+          <span class="title-left">
+            <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0 0 20.25 18V6A2.25 2.25 0 0 0 18 3.75H6A2.25 2.25 0 0 0 3.75 6v12A2.25 2.25 0 0 0 6 20.25Z" />
+            </svg>
+            分布の同時描画 (同一X軸スケール)
+          </span>
+        </h2>
+
+        <div class="svg-wrapper">
+          <svg id="compare-svg" viewBox="0 0 650 560">
+            <!-- X軸のグリッド線 (全域) -->
+            <g id="grid-group"></g>
+            
+            <!-- 上部: ヒストグラムエリア -->
+            <g id="histogram-group"></g>
+            
+            <!-- 下部: 箱ひげ図エリア -->
+            <g id="boxplot-group"></g>
+            
+            <!-- 軸・目盛り -->
+            <g id="axis-group"></g>
+          </svg>
+        </div>
+
+        <!-- オプション -->
+        <div class="options-container">
+          <label class="option-checkbox-wrapper">
+            <input type="checkbox" id="opt-show-mean" checked>
+            <span>箱ひげ図に平均値 (✕) を表示する</span>
+          </label>
+          <label class="option-checkbox-wrapper">
+            <input type="checkbox" id="opt-show-outliers" checked>
+            <span>箱ひげ図の外れ値 (1.5×IQR超) を表示する</span>
+          </label>
+        </div>
+
+        <!-- ツールチップ -->
+        <div class="tooltip" id="tooltip"></div>
+      </div>
+    </div>
+
+    <!-- 下部：学習ガイド & クイズ -->
+    <div class="guide-grid">
+      <!-- ガイド -->
+      <div class="card">
+        <h2 class="card-title">
+          <span class="title-left">
+            <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+            </svg>
+            ヒストグラムと箱ひげ図の対応を学ぶ
+          </span>
+        </h2>
+        <ul class="guide-list">
+          <li class="guide-item">
+            <span class="guide-badge">視覚の対応</span>
+            <div class="guide-content">
+              同じ横軸スケールで並べると、**「ヒストグラムが最も高い山（頻度が高い部分）」**と**「箱ひげ図の中央値・箱（データが集中する部分）」**がぴたりと一致することがわかります。
+            </div>
+          </li>
+          <li class="guide-item">
+            <span class="guide-badge">歪みの検出</span>
+            <div class="guide-content">
+              データが偏っている場合（非対称な分布）：
+              <br>・**右に裾が長い（山が左で、右に伸びる）**: 箱ひげ図では、右側のひげが長く伸び、右側に外れ値がプロットされます。また、**平均値は中央値より右（大きい方）**に引っ張られます。
+              <br>・**左に裾が長い（山が右で、左に伸びる）**: 左側のひげが長く伸び、**平均値は中央値より左（小さい方）**になります。
+            </div>
+          </li>
+          <li class="guide-item">
+            <span class="guide-badge">多峰性の罠</span>
+            <div class="guide-content">
+              箱ひげ図最大の弱点は、**「山が2つある分布（二峰性）」を検出できない**点です。
+              箱ひげ図はデータを「単一の塊」として要約するため、山が2つあっても普通の左右対称な分布のように描いてしまいます。これを防ぐために、**ヒストグラムを併用して分布の正確な形状（山がいくつあるか）を確認する**ことが実務や統計検定でも非常に重要になります。
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- クイズ -->
+      <div class="card quiz-box">
+        <h3>💡 考えてみよう！</h3>
+        <div class="quiz-question">
+          Q1. 「④ 山が2つある分布 (混合型)」のサンプルを読み込んだとき、箱ひげ図の中央値（Median）はどの位置にありますか？また、ヒストグラムでその位置のデータ数はどうなっていますか？
+        </div>
+        <button class="show-hint-btn" id="btn-show-hint-1">答えと解説を表示する</button>
+        <div class="quiz-hint" id="quiz-hint-content-1">
+          <strong>答え: 箱ひげ図の中央値は分布の中央付近（約50）にありますが、ヒストグラムを見るとその中央付近はデータが極端に少なく、谷（凹み）になっています。</strong><br><br>
+          これは箱ひげ図の重要な特徴（注意点）です。箱ひげ図は「順位的に真ん中の値」を示すため、その数値の周辺にデータが密に存在しているとは限りません。ヒストグラムを同時に確認することで、初めて「実際には中央にはほとんどデータがなく、30付近と70付近に二極化している」ことが分かります。
+        </div>
+
+        <div class="quiz-question" style="margin-top: 1rem; border-top: 1px dashed var(--border-color); padding-top: 1rem;">
+          Q2. 階級（ビン）の数を 5 から 25 までスライダーで大きく変更したとき、ヒストグラムと箱ひげ図はそれぞれどのように変化しますか？
+        </div>
+        <button class="show-hint-btn" id="btn-show-hint-2">答えと解説を表示する</button>
+        <div class="quiz-hint" id="quiz-hint-content-2">
+          <strong>答え: ヒストグラムの柱は細く細分化され形状が変化しますが、箱ひげ図は全く変化しません。</strong><br><br>
+          ヒストグラムは階級の分け方（ビンの数）によって山や谷の見え方が大きく変化し、分け方次第で印象が変わることがあります。<br>
+          一方、箱ひげ図は「生のデータをソートした時の代表値（最小、Q1、中央値、Q3、最大）」から直接計算されるため、描画のグループ設定に左右されず、常に一定の頑健（ロバスト）な要約結果を示します。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Googleスプレッドシート連携ヘルプモーダル -->
+  <div class="modal-backdrop" id="gsheet-modal">
+    <div class="modal-content">
+      <button class="modal-close" id="btn-modal-close">&times;</button>
+      <h3 style="font-family: var(--font-outfit); font-size:1.2rem; border-bottom: 2px solid var(--border-color); padding-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:20px; height:20px; color:var(--accent-primary);">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 11.516.516l-.02.041m-5.321 3.25l12.434-12.434a1.5 1.5 0 012.122 2.122L7.684 17.5a1.5 1.5 0 01-2.122 0z" />
+        </svg>
+        スプレッドシートとの連携手順
+      </h3>
+      <div class="modal-body">
+        Googleスプレッドシートのデータを本アプリで読み込めるようにするには、以下の設定を行ってください。
+        <ol>
+          <li>読み込みたいGoogleスプレッドシートを開きます。</li>
+          <li>メニューの<strong>「ファイル」</strong> ＞ <strong>「共有」</strong> ＞ <strong>「ウェブに公開」</strong> をクリックします。</li>
+          <li>形式として<strong>「カンマ区切り値 (.csv)」</strong>を選択し、<strong>「公開」</strong>します。</li>
+          <li>生成された公開用URLを本アプリの入力欄に貼り付け、<strong>「読み込む」</strong>をクリックします。</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>© 2026 分布を比較する - 統計検定®3級学習サポートツール | <a href="index.html">モザイク図</a> | <a href="boxplot.html">箱ひげ図</a></p>
+  </footer>
+
+  <script>
+    // --- プリセットデータ定義 ---
+    const PRESETS = {
+      // 1. 左右対称な分布
+      normal: `Score
+55
+62
+48
+53
+65
+58
+50
+72
+38
+60
+57
+52
+45
+67
+55
+59
+42
+61
+54
+50
+56
+47
+51
+63
+55
+58
+49
+52
+60
+54`,
+
+      // 2. 右に裾が長い分布 (所得風: 少数の極端に大きいデータがある)
+      skewedRight: `Income
+280
+320
+300
+250
+410
+350
+290
+310
+270
+520
+340
+300
+280
+380
+310
+1200
+290
+330
+850
+260
+320
+300
+340
+270
+450
+1500
+310
+280
+360
+330`,
+
+      // 3. 左に裾が長い分布 (簡単なテスト: 高得点に山があり、低得点に尾を引く)
+      skewedLeft: `Score
+95
+88
+92
+99
+85
+78
+94
+90
+87
+96
+93
+82
+89
+91
+98
+95
+65
+88
+92
+97
+90
+84
+75
+93
+91
+42
+89
+95
+87
+92`,
+
+      // 4. 二峰性分布 (混合型: 30近辺と70近辺に山がある)
+      bimodal: `Value
+28
+32
+30
+29
+33
+31
+27
+34
+30
+32
+28
+72
+68
+70
+73
+69
+71
+75
+67
+72
+70
+68
+74
+71
+52
+48
+50
+49
+51
+53`
+    };
+
+    // --- DOM要素の参照 ---
+    const inputCsvText = document.getElementById('input-csv-text');
+    const btnParseText = document.getElementById('btn-parse-text');
+    const inputSheetUrl = document.getElementById('input-sheet-url');
+    const btnLoadSheet = document.getElementById('btn-load-sheet');
+    const statusMessage = document.getElementById('status-message');
+    const inputBinCount = document.getElementById('input-bin-count');
+    const binCountVal = document.getElementById('bin-count-val');
+    const selectYCol = document.getElementById('select-y-col');
+    
+    const previewSection = document.getElementById('preview-section');
+    const previewTable = document.getElementById('preview-table');
+    
+    const optShowMean = document.getElementById('opt-show-mean');
+    const optShowOutliers = document.getElementById('opt-show-outliers');
+    const tooltip = document.getElementById('tooltip');
+    
+    const compareSvg = document.getElementById('compare-svg');
+    const gridGroup = document.getElementById('grid-group');
+    const histogramGroup = document.getElementById('histogram-group');
+    const boxplotGroup = document.getElementById('boxplot-group');
+    const axisGroup = document.getElementById('axis-group');
+
+    // クイズ・モーダル
+    const btnShowHint1 = document.getElementById('btn-show-hint-1');
+    const quizHintContent1 = document.getElementById('quiz-hint-content-1');
+    const btnShowHint2 = document.getElementById('btn-show-hint-2');
+    const quizHintContent2 = document.getElementById('quiz-hint-content-2');
+    const gsheetHelpLink = document.getElementById('gsheet-help-link');
+    const gsheetModal = document.getElementById('gsheet-modal');
+    const btnModalClose = document.getElementById('btn-modal-close');
+
+    // --- アプリケーション状態 ---
+    let parsedData = [];
+    let headers = [];
+
+    // SVGサイズ定義と共通横軸レイアウト
+    const SVG_WIDTH = 650;
+    const SVG_HEIGHT = 560;
+    
+    // 横軸の共通レイアウト
+    const LEFT_MARGIN = 60;
+    const RIGHT_MARGIN = 40;
+    const PLOT_WIDTH = SVG_WIDTH - LEFT_MARGIN - RIGHT_MARGIN;
+
+    // 縦軸レイアウト (ヒストグラムと箱ひげ図で分割)
+    const HIST_TOP = 50;
+    const HIST_HEIGHT = 280; // ヒストグラムの描画高さ
+    
+    const BOX_TOP = 390;
+    const BOX_HEIGHT = 90;   // 箱ひげ図の描画高さ
+
+    // --- イベントリスナー ---
+    document.getElementById('preset-normal').addEventListener('click', () => loadPreset('normal'));
+    document.getElementById('preset-skewed-right').addEventListener('click', () => loadPreset('skewedRight'));
+    document.getElementById('preset-skewed-left').addEventListener('click', () => loadPreset('skewedLeft'));
+    document.getElementById('preset-bimodal').addEventListener('click', () => loadPreset('bimodal'));
+
+    btnParseText.addEventListener('click', () => {
+      const text = inputCsvText.value.trim();
+      if (text) parseCSVData(text);
+    });
+
+    btnLoadSheet.addEventListener('click', async () => {
+      const url = inputSheetUrl.value.trim();
+      if (!url) return;
+      showStatus('Googleスプレッドシートからデータを取得中...', 'info');
+      try {
+        const csvText = await fetchGoogleSheet(url);
+        inputCsvText.value = csvText;
+        parseCSVData(csvText);
+        showStatus('Googleスプレッドシートの読み込みに成功しました！', 'success');
+      } catch (err) {
+        showStatus(err.message, 'error');
+      }
+    });
+
+    inputBinCount.addEventListener('input', (e) => {
+      binCountVal.textContent = e.target.value;
+      updatePlot();
+    });
+
+    selectYCol.addEventListener('change', updatePlot);
+    optShowMean.addEventListener('change', updatePlot);
+    optShowOutliers.addEventListener('change', updatePlot);
+
+    gsheetHelpLink.addEventListener('click', () => gsheetModal.classList.add('open'));
+    btnModalClose.addEventListener('click', () => gsheetModal.classList.remove('open'));
+    gsheetModal.addEventListener('click', (e) => {
+      if (e.target === gsheetModal) gsheetModal.classList.remove('open');
+    });
+
+    setupQuizHint(btnShowHint1, quizHintContent1);
+    setupQuizHint(btnShowHint2, quizHintContent2);
+
+    function setupQuizHint(btn, content) {
+      btn.addEventListener('click', () => {
+        if (content.style.display === 'block') {
+          content.style.display = 'none';
+          btn.textContent = '答えと解説を表示する';
+        } else {
+          content.style.display = 'block';
+          btn.textContent = '解説を隠す';
+        }
+      });
+    }
+
+    // --- ロジック ---
+
+    function loadPreset(name) {
+      const data = PRESETS[name];
+      if (data) {
+        inputCsvText.value = data;
+        parseCSVData(data);
+      }
+    }
+
+    async function fetchGoogleSheet(url) {
+      const sheetIdMatch = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+      if (!sheetIdMatch) throw new Error('無効なGoogleスプレッドシートURLです。');
+      const sheetId = sheetIdMatch[1];
+      const pubCsvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/pub?output=csv`;
+      
+      try {
+        const res = await fetch(pubCsvUrl);
+        if (!res.ok) throw new Error();
+        return await res.text();
+      } catch (err) {
+        const exportCsvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+        const resFallback = await fetch(exportCsvUrl);
+        if (!resFallback.ok) throw new Error('取得失敗。ウェブに公開されているか共有設定を確認してください。');
+        return await resFallback.text();
+      }
+    }
+
+    function parseCSVData(text) {
+      try {
+        const lines = text.split(/\r?\n/);
+        if (lines.length < 2) return;
+
+        const firstLine = lines[0];
+        let delimiter = firstLine.includes('\t') ? '\t' : ',';
+
+        headers = firstLine.split(delimiter).map(h => h.trim().replace(/^["']|["']$/g, ''));
+        parsedData = [];
+        
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (line === '') continue;
+          
+          const values = line.split(delimiter).map(v => v.trim().replace(/^["']|["']$/g, ''));
+          const rowObj = {};
+          headers.forEach((header, index) => {
+            rowObj[header] = values[index] !== undefined ? values[index] : '';
+          });
+          parsedData.push(rowObj);
+        }
+
+        updateColumnSelects();
+        updatePreviewTable();
+        updatePlot();
+      } catch (err) {
+        showStatus(`CSVの解析エラー: ${err.message}`, 'error');
+      }
+    }
+
+    function showStatus(msg, type) {
+      statusMessage.textContent = msg;
+      statusMessage.className = 'status-msg ' + (type === 'success' ? 'status-success' : 'status-error');
+      statusMessage.style.display = 'block';
+    }
+
+    function updateColumnSelects() {
+      selectYCol.innerHTML = '';
+      headers.forEach(header => {
+        const option = document.createElement('option');
+        option.value = header;
+        option.textContent = header;
+        selectYCol.appendChild(option);
+      });
+      if (headers.length > 0) selectYCol.value = headers[0];
+    }
+
+    function updatePreviewTable() {
+      const thead = previewTable.querySelector('thead');
+      const tbody = previewTable.querySelector('tbody');
+      thead.innerHTML = `<tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
+      tbody.innerHTML = parsedData.slice(0, 5).map(row => 
+        `<tr>${headers.map(h => `<td>${row[h]}</td>`).join('')}</tr>`
+      ).join('');
+      previewSection.style.display = 'block';
+    }
+
+    // --- 統計計算エンジン ---
+    function getMedian(sortedArr) {
+      const len = sortedArr.length;
+      if (len === 0) return 0;
+      return len % 2 === 1 ? sortedArr[Math.floor(len / 2)] : (sortedArr[len / 2 - 1] + sortedArr[len / 2]) / 2;
+    }
+
+    function calculateStatistics(arr) {
+      const sortedArr = arr
+        .map(v => Number(v))
+        .filter(v => !isNaN(v))
+        .sort((a, b) => a - b);
+
+      const len = sortedArr.length;
+      if (len === 0) return null;
+
+      const min = sortedArr[0];
+      const max = sortedArr[len - 1];
+      const sum = sortedArr.reduce((a, b) => a + b, 0);
+      const mean = sum / len;
+      const median = getMedian(sortedArr);
+
+      let q1, q3;
+      const mid = Math.floor(len / 2);
+      if (len % 2 === 1) {
+        q1 = getMedian(sortedArr.slice(0, mid));
+        q3 = getMedian(sortedArr.slice(mid + 1));
+      } else {
+        q1 = getMedian(sortedArr.slice(0, mid));
+        q3 = getMedian(sortedArr.slice(mid));
+      }
+
+      const iqr = q3 - q1;
+      const lowerLimit = q1 - 1.5 * iqr;
+      const upperLimit = q3 + 1.5 * iqr;
+
+      const outliers = sortedArr.filter(v => v < lowerLimit || v > upperLimit);
+      const nonOutliers = sortedArr.filter(v => v >= lowerLimit && v <= upperLimit);
+      const lowerWhisker = nonOutliers.length > 0 ? nonOutliers[0] : q1;
+      const upperWhisker = nonOutliers.length > 0 ? nonOutliers[nonOutliers.length - 1] : q3;
+
+      return { n: len, min, q1, median, q3, max, mean, iqr, outliers, lowerWhisker, upperWhisker, data: sortedArr };
+    }
+
+    // --- 描画処理 ---
+    function updatePlot() {
+      gridGroup.innerHTML = '';
+      histogramGroup.innerHTML = '';
+      boxplotGroup.innerHTML = '';
+      axisGroup.innerHTML = '';
+
+      const yCol = selectYCol.value;
+      if (!yCol || parsedData.length === 0) return;
+
+      const rawValues = parsedData.map(r => r[yCol]).filter(v => v !== '');
+      const stats = calculateStatistics(rawValues);
+      if (!stats) return;
+
+      // 共通のX軸スケール範囲設定 (余白を持たせる)
+      const dataMin = stats.min;
+      const dataMax = stats.max;
+      const dataRange = dataMax - dataMin;
+      
+      let xMin = dataMin;
+      let xMax = dataMax;
+      if (dataRange === 0) {
+        xMin = dataMin - 10;
+        xMax = dataMax + 10;
+      } else {
+        xMin = dataMin - dataRange * 0.06;
+        xMax = dataMax + dataRange * 0.06;
+      }
+
+      // 共通X座標変換関数
+      function xScale(val) {
+        return LEFT_MARGIN + ((val - xMin) / (xMax - xMin) * PLOT_WIDTH);
+      }
+
+      // X軸目盛りの計算とグリッド線の描画
+      const roughStep = (xMax - xMin) / 8;
+      const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
+      const normalizedStep = roughStep / magnitude;
+      let step = magnitude;
+      if (normalizedStep > 5) step = 5 * magnitude;
+      else if (normalizedStep > 2) step = 2 * magnitude;
+
+      const startTick = Math.ceil(xMin / step) * step;
+      const endTick = Math.floor(xMax / step) * step;
+
+      for (let tick = startTick; tick <= endTick; tick += step) {
+        const tickX = xScale(tick);
+        if (tickX >= LEFT_MARGIN && tickX <= LEFT_MARGIN + PLOT_WIDTH) {
+          // 縦方向のグリッド線 (上部ヒストグラムから下部箱ひげ図まで貫通)
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          line.setAttribute('class', 'grid-line');
+          line.setAttribute('x1', tickX);
+          line.setAttribute('y1', HIST_TOP);
+          line.setAttribute('x2', tickX);
+          line.setAttribute('y2', BOX_TOP + BOX_HEIGHT);
+          gridGroup.appendChild(line);
+
+          // X軸目盛り値 (箱ひげ図の下に配置)
+          const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          label.setAttribute('class', 'axis-label');
+          label.setAttribute('x', tickX);
+          label.setAttribute('y', BOX_TOP + BOX_HEIGHT + 20);
+          label.setAttribute('text-anchor', 'middle');
+          label.textContent = Number(tick.toFixed(4));
+          axisGroup.appendChild(label);
+        }
+      }
+
+      // X軸線 (箱ひげ図の下端)
+      const xAxisLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      xAxisLine.setAttribute('class', 'axis-line');
+      xAxisLine.setAttribute('x1', LEFT_MARGIN);
+      xAxisLine.setAttribute('y1', BOX_TOP + BOX_HEIGHT);
+      xAxisLine.setAttribute('x2', LEFT_MARGIN + PLOT_WIDTH);
+      xAxisLine.setAttribute('y2', BOX_TOP + BOX_HEIGHT);
+      axisGroup.appendChild(xAxisLine);
+
+      // X軸タイトル（列名）
+      const xAxisTitle = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      xAxisTitle.setAttribute('class', 'axis-title');
+      xAxisTitle.setAttribute('x', LEFT_MARGIN + PLOT_WIDTH / 2);
+      xAxisTitle.setAttribute('y', BOX_TOP + BOX_HEIGHT + 42);
+      xAxisTitle.setAttribute('text-anchor', 'middle');
+      xAxisTitle.textContent = `${yCol} の数値データ`;
+      axisGroup.appendChild(xAxisTitle);
+
+      // ==========================================
+      // 1. ヒストグラムの計算と描画
+      // ==========================================
+      const numBins = parseInt(inputBinCount.value);
+      const binWidth = dataRange / numBins;
+      const bins = Array(numBins).fill(0).map((_, i) => ({
+        index: i,
+        start: dataMin + i * binWidth,
+        end: dataMin + (i + 1) * binWidth,
+        count: 0
+      }));
+
+      // 各データのビン分類
+      stats.data.forEach(val => {
+        let binIdx = Math.floor((val - dataMin) / binWidth);
+        if (binIdx >= numBins) binIdx = numBins - 1; // 最大値は最後のビンに含める
+        if (binIdx < 0) binIdx = 0;
+        bins[binIdx].count++;
+      });
+
+      const maxFreq = Math.max(...bins.map(b => b.count));
+      // Y軸（度数）の最大スケール設定
+      const yMaxFreq = maxFreq === 0 ? 5 : Math.ceil(maxFreq * 1.15);
+
+      function yHistScale(freq) {
+        return HIST_TOP + HIST_HEIGHT - (freq / yMaxFreq * HIST_HEIGHT);
+      }
+
+      // ヒストグラムの度数グリッド線 (横線)
+      const yStep = yMaxFreq <= 5 ? 1 : Math.ceil(yMaxFreq / 5);
+      for (let f = 0; f <= yMaxFreq; f += yStep) {
+        const yPos = yHistScale(f);
+        if (yPos >= HIST_TOP) {
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          line.setAttribute('class', 'grid-line');
+          line.setAttribute('x1', LEFT_MARGIN);
+          line.setAttribute('y1', yPos);
+          line.setAttribute('x2', LEFT_MARGIN + PLOT_WIDTH);
+          line.setAttribute('y2', yPos);
+          gridGroup.appendChild(line);
+
+          // 度数ラベル (左側Y軸)
+          const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          label.setAttribute('class', 'axis-label');
+          label.setAttribute('x', LEFT_MARGIN - 8);
+          label.setAttribute('y', yPos + 4);
+          label.setAttribute('text-anchor', 'end');
+          label.textContent = f;
+          axisGroup.appendChild(label);
+        }
+      }
+
+      // ヒストグラム用のY軸線
+      const histYAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      histYAxis.setAttribute('class', 'axis-line');
+      histYAxis.setAttribute('x1', LEFT_MARGIN);
+      histYAxis.setAttribute('y1', HIST_TOP);
+      histYAxis.setAttribute('x2', LEFT_MARGIN);
+      histYAxis.setAttribute('y2', HIST_TOP + HIST_HEIGHT);
+      axisGroup.appendChild(histYAxis);
+
+      // Y軸タイトル (度数)
+      const histYTitle = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      histYTitle.setAttribute('class', 'axis-title');
+      histYTitle.setAttribute('x', LEFT_MARGIN - 10);
+      histYTitle.setAttribute('y', HIST_TOP - 12);
+      histYTitle.setAttribute('text-anchor', 'middle');
+      histYTitle.textContent = '度数 (人)';
+      axisGroup.appendChild(histYTitle);
+
+      // ヒストグラムの棒を描画
+      bins.forEach(bin => {
+        if (bin.count === 0) return;
+        
+        const xStart = xScale(bin.start);
+        const xEnd = xScale(bin.end);
+        const barWidth = xEnd - xStart - 1; // 隙間1px
+        const barHeight = HIST_TOP + HIST_HEIGHT - yHistScale(bin.count);
+
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('class', 'hist-bar');
+        rect.setAttribute('x', xStart);
+        rect.setAttribute('y', yHistScale(bin.count));
+        rect.setAttribute('width', Math.max(1, barWidth));
+        rect.setAttribute('height', Math.max(1, barHeight));
+        
+        // ホバーツールチップ
+        rect.onmouseenter = (e) => showHistTooltip(e, bin, stats.n);
+        rect.onmousemove = (e) => moveTooltip(e);
+        rect.onmouseleave = () => hideTooltip();
+
+        histogramGroup.appendChild(rect);
+      });
+
+      // ==========================================
+      // 2. 横型箱ひげ図の描画
+      // ==========================================
+      const boxCenterY = BOX_TOP + BOX_HEIGHT / 2;
+      const boxRectHeight = 36;
+      
+      const xQ1 = xScale(stats.q1);
+      const xMedian = xScale(stats.median);
+      const xQ3 = xScale(stats.q3);
+      const xMinWhisker = xScale(stats.lowerWhisker);
+      const xMaxWhisker = xScale(stats.upperWhisker);
+      const xMean = xScale(stats.mean);
+
+      // ひげの横線
+      // 下ひげ横線
+      const lowerWhiskerLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      lowerWhiskerLine.setAttribute('class', 'whisker-line');
+      lowerWhiskerLine.setAttribute('x1', xMinWhisker);
+      lowerWhiskerLine.setAttribute('y1', boxCenterY);
+      lowerWhiskerLine.setAttribute('x2', xQ1);
+      lowerWhiskerLine.setAttribute('y2', boxCenterY);
+      boxplotGroup.appendChild(lowerWhiskerLine);
+
+      // 上ひげ横線
+      const upperWhiskerLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      upperWhiskerLine.setAttribute('class', 'whisker-line');
+      upperWhiskerLine.setAttribute('x1', xQ3);
+      upperWhiskerLine.setAttribute('y1', boxCenterY);
+      upperWhiskerLine.setAttribute('x2', xMaxWhisker);
+      upperWhiskerLine.setAttribute('y2', boxCenterY);
+      boxplotGroup.appendChild(upperWhiskerLine);
+
+      // ひげの縦端棒 (T字の縦棒)
+      const whiskerBarHeight = 16;
+      
+      // 下端ひげ
+      const lowerWhiskerBar = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      lowerWhiskerBar.setAttribute('class', 'box-whisker-vertical');
+      lowerWhiskerBar.setAttribute('x1', xMinWhisker);
+      lowerWhiskerBar.setAttribute('y1', boxCenterY - whiskerBarHeight / 2);
+      lowerWhiskerBar.setAttribute('x2', xMinWhisker);
+      lowerWhiskerBar.setAttribute('y2', boxCenterY + whiskerBarHeight / 2);
+      boxplotGroup.appendChild(lowerWhiskerBar);
+
+      // 上端ひげ
+      const upperWhiskerBar = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      upperWhiskerBar.setAttribute('class', 'box-whisker-vertical');
+      upperWhiskerBar.setAttribute('x1', xMaxWhisker);
+      upperWhiskerBar.setAttribute('y1', boxCenterY - whiskerBarHeight / 2);
+      upperWhiskerBar.setAttribute('x2', xMaxWhisker);
+      upperWhiskerBar.setAttribute('y2', boxCenterY + whiskerBarHeight / 2);
+      boxplotGroup.appendChild(upperWhiskerBar);
+
+      // 箱の描画 (Q1〜Q3の長方形)
+      const boxRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      boxRect.setAttribute('class', 'box-rect');
+      boxRect.setAttribute('x', xQ1);
+      boxRect.setAttribute('y', boxCenterY - boxRectHeight / 2);
+      boxRect.setAttribute('width', Math.max(1, xQ3 - xQ1));
+      boxRect.setAttribute('height', boxRectHeight);
+      boxplotGroup.appendChild(boxRect);
+
+      // 中央値の縦線
+      const medianLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      medianLine.setAttribute('class', 'median-line');
+      medianLine.setAttribute('x1', xMedian);
+      medianLine.setAttribute('y1', boxCenterY - boxRectHeight / 2);
+      medianLine.setAttribute('x2', xMedian);
+      medianLine.setAttribute('y2', boxCenterY + boxRectHeight / 2);
+      boxplotGroup.appendChild(medianLine);
+
+      // 平均値の✕マーク
+      if (optShowMean.checked) {
+        const size = 5;
+        const meanG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        meanG.setAttribute('class', 'mean-marker');
+
+        const l1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        l1.setAttribute('x1', xMean - size); l1.setAttribute('y1', boxCenterY - size);
+        l1.setAttribute('x2', xMean + size); l1.setAttribute('y2', boxCenterY + size);
+
+        const l2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        l2.setAttribute('x1', xMean - size); l2.setAttribute('y1', boxCenterY + size);
+        l2.setAttribute('x2', xMean + size); l2.setAttribute('y2', boxCenterY - size);
+
+        meanG.appendChild(l1);
+        meanG.appendChild(l2);
+        boxplotGroup.appendChild(meanG);
+      }
+
+      // 外れ値のドット
+      if (optShowOutliers.checked && stats.outliers.length > 0) {
+        stats.outliers.forEach(val => {
+          const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          circle.setAttribute('class', 'outlier-circle');
+          circle.setAttribute('cx', xScale(val));
+          circle.setAttribute('cy', boxCenterY);
+          circle.setAttribute('r', '4');
+
+          circle.onmouseenter = (e) => showOutlierTooltip(e, val);
+          circle.onmousemove = (e) => moveTooltip(e);
+          circle.onmouseleave = () => hideTooltip();
+
+          boxplotGroup.appendChild(circle);
+        });
+      }
+
+      // 箱ひげ図のホバー透明領域 (ツールチップ用)
+      const hoverBox = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      hoverBox.setAttribute('x', xMinWhisker - 5);
+      hoverBox.setAttribute('y', boxCenterY - boxRectHeight / 2 - 5);
+      hoverBox.setAttribute('width', (xMaxWhisker - xMinWhisker) + 10);
+      hoverBox.setAttribute('height', boxRectHeight + 10);
+      hoverBox.setAttribute('fill', 'transparent');
+      hoverBox.setAttribute('style', 'cursor: pointer;');
+
+      hoverBox.onmouseenter = (e) => showBoxTooltip(e, stats, yCol);
+      hoverBox.onmousemove = (e) => moveTooltip(e);
+      hoverBox.onmouseleave = () => hideTooltip();
+      boxplotGroup.appendChild(hoverBox);
+    }
+
+    // --- ツールチップ表示制御 ---
+    
+    function showHistTooltip(e, bin, total) {
+      const pct = (bin.count / total * 100).toFixed(1);
+      tooltip.innerHTML = `
+        <div class="tooltip-title">
+          <span style="display:inline-block; width:10px; height:10px; background:var(--color-hist-bg); border:1.5px solid var(--color-hist-border);"></span>
+          <span>階級の範囲</span>
+        </div>
+        <div class="tooltip-row" style="font-weight:700; font-size:1rem; color:#4f46e5; border-bottom:1px solid var(--border-color); padding-bottom:0.25rem;">
+          <span>${bin.start.toFixed(1)} ～ ${bin.end.toFixed(1)}</span>
+        </div>
+        <div class="tooltip-row">
+          <span>度数 (人数):</span>
+          <span class="tooltip-value">${bin.count} 人</span>
+        </div>
+        <div class="tooltip-row">
+          <span>相対度数 (%):</span>
+          <span class="tooltip-value">${pct} %</span>
+        </div>
+      `;
+      tooltip.style.opacity = '1';
+    }
+
+    function showBoxTooltip(e, stats, label) {
+      tooltip.innerHTML = `
+        <div class="tooltip-title">
+          <span style="display:inline-block; width:10px; height:10px; background:var(--color-box-bg); border:1.5px solid var(--color-box-border);"></span>
+          <span>箱ひげ図 (${label})</span>
+        </div>
+        <div class="tooltip-row">
+          <span>サンプル数 (n):</span>
+          <span class="tooltip-value">${stats.n}</span>
+        </div>
+        <div class="tooltip-row" style="border-top:1px dashed var(--border-color); padding-top:0.25rem; margin-top:0.25rem;">
+          <span>最大値 (Max):</span>
+          <span class="tooltip-value">${stats.max.toFixed(2).replace(/\.00$/, '')}</span>
+        </div>
+        <div class="tooltip-row">
+          <span>第3四分位数 (Q3):</span>
+          <span class="tooltip-value">${stats.q3.toFixed(2).replace(/\.00$/, '')}</span>
+        </div>
+        <div class="tooltip-row" style="font-weight:700; color:var(--color-box-text);">
+          <span>中央値 (Median):</span>
+          <span class="tooltip-value">${stats.median.toFixed(2).replace(/\.00$/, '')}</span>
+        </div>
+        <div class="tooltip-row">
+          <span>平均値 (Mean):</span>
+          <span class="tooltip-value">${stats.mean.toFixed(2).replace(/\.00$/, '')}</span>
+        </div>
+        <div class="tooltip-row">
+          <span>第1四分位数 (Q1):</span>
+          <span class="tooltip-value">${stats.q1.toFixed(2).replace(/\.00$/, '')}</span>
+        </div>
+        <div class="tooltip-row">
+          <span>最小値 (Min):</span>
+          <span class="tooltip-value">${stats.min.toFixed(2).replace(/\.00$/, '')}</span>
+        </div>
+        <div class="tooltip-row" style="border-top:1px dashed var(--border-color); padding-top:0.25rem; margin-top:0.25rem; font-size:0.75rem; color:var(--text-light);">
+          <span>四分位範囲 (IQR):</span>
+          <span>${stats.iqr.toFixed(2).replace(/\.00$/, '')}</span>
+        </div>
+        <div class="tooltip-row" style="font-size:0.75rem; color:var(--text-light);">
+          <span>外れ値の数:</span>
+          <span>${stats.outliers.length} 個</span>
+        </div>
+      `;
+      tooltip.style.opacity = '1';
+    }
+
+    function showOutlierTooltip(e, val) {
+      tooltip.innerHTML = `
+        <div class="tooltip-title">
+          <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#ffffff; border:2px solid var(--color-box-border);"></span>
+          <span>外れ値</span>
+        </div>
+        <div class="tooltip-row">
+          <span>値:</span>
+          <span class="tooltip-value" style="color:var(--color-box-text); font-size:1.05rem;">${val}</span>
+        </div>
+      `;
+      tooltip.style.opacity = '1';
+    }
+
+    function moveTooltip(e) {
+      const offset = 15;
+      const containerRect = document.getElementById('plots-card').getBoundingClientRect();
+      const x = e.clientX - containerRect.left + offset;
+      const y = e.clientY - containerRect.top + offset;
+      tooltip.style.left = `${x}px`;
+      tooltip.style.top = `${y}px`;
+    }
+
+    function hideTooltip() {
+      tooltip.style.opacity = '0';
+    }
+
+    // --- 初期ロード時のプリセット ---
+    window.addEventListener('DOMContentLoaded', () => {
+      loadPreset('normal');
+    });
+  </script>
+</body>
+</html>
