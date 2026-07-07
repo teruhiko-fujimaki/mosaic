@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>正規分布を理解する - 統計検定3級学習サポート</title>
+  <meta name="description" content="統計検定3級受験者向けに、正規分布の確率分布や「68% - 95% - 99.7% ルール（経験則）」をグラフィカルに学習できるツールです。平均値や標準偏差を操作するシミュレーター、偏差値との関連性のビジュアル化、スコア入力による位置判定など、直感的で美しいインターフェースを提供します。">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* --- デザインシステム & 変数 --- */
+    :root {
+      --bg-gradient-start: #f5f7fa;
+      --bg-gradient-end: #e4e9f2;
+      
+      --card-bg: rgba(255, 255, 255, 0.85);
+      --card-border: rgba(255, 255, 255, 0.6);
+      --card-shadow: 0 8px 32px 0 rgba(148, 163, 184, 0.08), 0 4px 8px 0 rgba(148, 163, 184, 0.04);
+      
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --text-light: #94a3b8;
+      
+      --accent-primary: #818cf8; /* パステルインディゴ */
+      --accent-primary-light: #e0e7ff;
+      --border-color: #e2e8f0;
+      
+      /* シグマ範囲のカラー（パステル調） */
+      --color-1sig-bg: rgba(209, 250, 229, 0.6);   /* パステルグリーン */
+      --color-1sig-border: #34d399;
+      --color-1sig-text: #065f46;
+      
+      --color-2sig-bg: rgba(254, 243, 199, 0.6);   /* パステルイエロー */
+      --color-2sig-border: #fbbf24;
+      --color-2sig-text: #92400e;
+      
+      --color-3sig-bg: rgba(254, 226, 226, 0.6);   /* パステルピンク */
+      --color-3sig-border: #f87171;
+      --color-3sig-text: #991b1b;
+
+      --color-custom-bg: rgba(224, 242, 254, 0.6); /* パステルブルー */
+      --color-custom-border: #38bdf8;
+      --color-custom-text: #0369a1;
+      
+      --font-outfit: 'Outfit', 'Noto Sans JP', sans-serif;
+      --font-inter: 'Inter', 'Noto Sans JP', sans-serif;
+    }
+
+    /* --- 基本スタイル --- */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-inter);
+      background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      line-height: 1.6;
+      padding: 2rem 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    /* --- ヘッダー --- */
+    header {
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+
+    header h1 {
+      font-family: var(--font-outfit);
+      font-size: 2.5rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.025em;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      font-weight: 500;
+    }
+
+    header .badge {
+      display: inline-block;
+      background-color: var(--accent-primary-light);
+      color: #4f46e5;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-top: 0.5rem;
+      border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+
+    /* --- ナビゲーションバー --- */
+    .nav-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .nav-tab {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.25rem;
+      border-radius: 12px;
+      text-decoration: none;
+      font-family: var(--font-outfit);
+      font-weight: 700;
+      font-size: 0.95rem;
+      transition: all 0.2s ease;
+      border: 1px solid var(--border-color);
+      background-color: rgba(255, 255, 255, 0.5);
+      color: var(--text-muted);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    }
+
+    .nav-tab:hover {
+      background-color: rgba(255, 255, 255, 0.8);
+      color: var(--accent-primary);
+      transform: translateY(-1px);
+    }
+
+    .nav-tab.active {
+      background-color: var(--accent-primary);
+      color: #ffffff;
+      border-color: var(--accent-primary);
+      box-shadow: 0 4px 12px rgba(129, 140, 248, 0.3);
+    }
+
+    .nav-tab svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* --- メインコンテンツ（2カラムレイアウト） --- */
+    .app-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 2rem;
+      width: 100%;
+    }
+
+    @media (max-width: 1024px) {
+      .app-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* --- カードスタイル --- */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: var(--card-shadow);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+      box-shadow: 0 12px 40px 0 rgba(148, 163, 184, 0.12);
+    }
+
+    .card-title {
+      font-family: var(--font-outfit);
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-main);
+      border-bottom: 2px solid var(--border-color);
+      padding-bottom: 0.75rem;
+    }
+
+    .card-title-text {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .card-title svg {
+      width: 24px;
+      height: 24px;
+      color: var(--accent-primary);
+    }
+
+    /* --- 左ペイン：正規分布グラフエリア --- */
+    .graph-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .svg-wrapper {
+      width: 100%;
+      position: relative;
+      background: white;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      padding: 1rem;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.01);
+    }
+
+    svg {
+      width: 100%;
+      height: auto;
+      overflow: visible;
+    }
+
+    .axis-line {
+      stroke: #cbd5e1;
+      stroke-width: 1.5px;
+    }
+
+    .grid-line {
+      stroke: #f1f5f9;
+      stroke-dasharray: 2, 2;
+    }
+
+    .bell-curve {
+      stroke: #6366f1;
+      stroke-width: 3px;
+      fill: none;
+      stroke-linecap: round;
+      transition: d 0.3s ease;
+    }
+
+    .highlight-poly {
+      transition: d 0.3s ease, fill 0.3s ease;
+    }
+
+    .reference-line {
+      stroke-width: 1.5px;
+      stroke-dasharray: 4, 4;
+      transition: x1 0.3s ease, x2 0.3s ease;
+    }
+
+    .mean-line {
+      stroke: #a855f7;
+      stroke-width: 2px;
+      stroke-dasharray: none;
+    }
+
+    .score-dot {
+      fill: #ef4444;
+      stroke: #ffffff;
+      stroke-width: 2px;
+      transition: cx 0.3s ease, cy 0.3s ease;
+    }
+
+    .score-line {
+      stroke: #ef4444;
+      stroke-width: 1.5px;
+      stroke-dasharray: 2, 2;
+      transition: x1 0.3s ease, x2 0.3s ease, y1 0.3s ease, y2 0.3s ease;
+    }
+
+    .graph-label {
+      font-size: 11px;
+      fill: var(--text-muted);
+      font-weight: 500;
+      text-anchor: middle;
+    }
+
+    .graph-label.bold {
+      font-weight: 700;
+      fill: var(--text-main);
+    }
+
+    /* --- 切り替えコントロール --- */
+    .rule-selector {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.5rem;
+    }
+
+    @media (max-width: 640px) {
+      .rule-selector {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .rule-btn {
+      padding: 0.75rem 0.5rem;
+      border: 1px solid var(--border-color);
+      background-color: white;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .rule-btn:hover {
+      background-color: #f8fafc;
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
+    }
+
+    .rule-btn.active {
+      color: white;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+    }
+
+    .rule-btn.active[data-rule="1sig"] { background-color: #10b981; border-color: #10b981; }
+    .rule-btn.active[data-rule="2sig"] { background-color: #f59e0b; border-color: #f59e0b; }
+    .rule-btn.active[data-rule="3sig"] { background-color: #ef4444; border-color: #ef4444; }
+    .rule-btn.active[data-rule="custom"] { background-color: #0ea5e9; border-color: #0ea5e9; }
+
+    .rule-btn .percent-badge {
+      font-size: 0.75rem;
+      opacity: 0.9;
+    }
+
+    /* --- 右ペイン：シミュレーター＆解説 --- */
+    .controls-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      background: white;
+      padding: 1.25rem;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    .form-label {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--text-main);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .form-value {
+      font-family: var(--font-outfit);
+      font-size: 1rem;
+      color: var(--accent-primary);
+      background-color: var(--accent-primary-light);
+      padding: 0.1rem 0.5rem;
+      border-radius: 6px;
+      font-weight: 700;
+    }
+
+    .slider {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 9999px;
+      background: #e2e8f0;
+      outline: none;
+      transition: background 0.3s;
+    }
+
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #6366f1;
+      cursor: pointer;
+      border: 2px solid white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+      transition: transform 0.1s ease;
+    }
+
+    .slider::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .slider-desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+
+    /* カスタム範囲用のダブルスライダーコンテナ */
+    .custom-range-container {
+      display: none;
+      flex-direction: column;
+      gap: 1rem;
+      margin-top: 0.5rem;
+      padding-top: 1rem;
+      border-top: 1px dashed var(--border-color);
+    }
+
+    /* 情報カード */
+    .info-card {
+      padding: 1.25rem;
+      border-radius: 12px;
+      border-left: 5px solid;
+      background: white;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      transition: all 0.3s ease;
+    }
+
+    .info-card.color-1sig { border-left-color: var(--color-1sig-border); background-color: rgba(209, 250, 229, 0.15); }
+    .info-card.color-2sig { border-left-color: var(--color-2sig-border); background-color: rgba(254, 243, 199, 0.15); }
+    .info-card.color-3sig { border-left-color: var(--color-3sig-border); background-color: rgba(254, 226, 226, 0.15); }
+    .info-card.color-custom { border-left-color: var(--color-custom-border); background-color: rgba(224, 242, 254, 0.15); }
+
+    .info-card-title {
+      font-weight: 700;
+      font-size: 1.05rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .info-card.color-1sig .info-card-title { color: var(--color-1sig-text); }
+    .info-card.color-2sig .info-card-title { color: var(--color-2sig-text); }
+    .info-card.color-3sig .info-card-title { color: var(--color-3sig-text); }
+    .info-card.color-custom .info-card-title { color: var(--color-custom-text); }
+
+    .info-card-desc {
+      font-size: 0.85rem;
+      color: var(--text-main);
+      line-height: 1.5;
+    }
+
+    .info-card-math {
+      font-family: var(--font-outfit);
+      font-weight: 700;
+      font-size: 1.3rem;
+      margin: 0.25rem 0;
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+    }
+
+    .info-card-math span {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    /* スコアチェッカー */
+    .score-checker {
+      background: white;
+      padding: 1.25rem;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .score-input-wrapper {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .score-input {
+      flex: 1;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      outline: none;
+      font-family: var(--font-outfit);
+    }
+
+    .score-input:focus {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.15);
+    }
+
+    .score-result {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      margin-top: 0.25rem;
+    }
+
+    .score-result-item {
+      background: #f8fafc;
+      padding: 0.5rem;
+      border-radius: 8px;
+      text-align: center;
+      border: 1px solid #f1f5f9;
+    }
+
+    .score-result-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 0.15rem;
+    }
+
+    .score-result-val {
+      font-family: var(--font-outfit);
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--text-main);
+    }
+
+    .score-result-val.highlight {
+      color: #ef4444;
+    }
+
+    /* --- アコーディオン解説 --- */
+    .faq-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      width: 100%;
+    }
+
+    .faq-item {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      transition: all 0.2s ease;
+    }
+
+    .faq-trigger {
+      width: 100%;
+      padding: 1rem 1.25rem;
+      background: none;
+      border: none;
+      text-align: left;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--text-main);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background-color 0.2s;
+    }
+
+    .faq-trigger:hover {
+      background-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .faq-trigger svg {
+      width: 18px;
+      height: 18px;
+      color: var(--text-muted);
+      transition: transform 0.2s ease;
+    }
+
+    .faq-item.open .faq-trigger svg {
+      transform: rotate(180deg);
+    }
+
+    .faq-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+      background-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .faq-content-inner {
+      padding: 1.25rem;
+      font-size: 0.88rem;
+      color: var(--text-main);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      line-height: 1.6;
+    }
+
+    .highlight-box {
+      background-color: white;
+      padding: 0.75rem;
+      border-radius: 8px;
+      border-left: 3px solid var(--accent-primary);
+      font-weight: 500;
+    }
+
+    .text-success { color: #059669; font-weight: bold; }
+    .text-warning { color: #d97706; font-weight: bold; }
+    .text-danger { color: #dc2626; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- ヘッダー -->
+    <header>
+      <span class="badge">統計検定® 3級対策サポート</span>
+      <h1 id="app-title">正規分布を理解する</h1>
+      <p>「68% - 95% - 99.7% ルール（経験則）」と偏差値をインタラクティブに可視化</p>
+    </header>
+
+    <!-- ページ切り替えナビゲーション -->
+    <nav class="nav-tabs">
+      <a href="index.html" class="nav-tab">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
+        </svg>
+        モザイク図
+      </a>
+      <a href="boxplot.html" class="nav-tab">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v4M12 17v4M8 7h8v10H8V7Z" />
+        </svg>
+        箱ひげ図
+      </a>
+      <a href="compare.html" class="nav-tab">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        分布の比較
+      </a>
+      <a href="normal.html" class="nav-tab active">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 20c3-1 4-13 9-13s6 12 9 13" />
+        </svg>
+        正規分布
+      </a>
+    </nav>
+
+    <!-- メインコンテンツグリッド -->
+    <div class="app-grid">
+      
+      <!-- 左カラム：グラフエリア -->
+      <div class="card graph-container">
+        <h2 class="card-title">
+          <span class="title-left">
+            <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 24px; height: 24px; color: var(--accent-primary); display: inline-block; vertical-align: middle; margin-right: 0.5rem;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 20c3-1 4-13 9-13s6 12 9 13" />
+            </svg>
+            正規分布の確率密度曲線
+          </span>
+        </h2>
+
+        <!-- SVG グラフ -->
+        <div class="svg-wrapper">
+          <svg id="normal-svg" viewBox="0 0 650 450">
+            <!-- 定義（グラデーションなど） -->
+            <defs>
+              <linearGradient id="curve-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#818cf8" stop-opacity="0.3" />
+                <stop offset="100%" stop-color="#818cf8" stop-opacity="0.0" />
+              </linearGradient>
+              <linearGradient id="highlight-grad-1sig" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#34d399" stop-opacity="0.4" />
+                <stop offset="100%" stop-color="#34d399" stop-opacity="0.05" />
+              </linearGradient>
+              <linearGradient id="highlight-grad-2sig" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.4" />
+                <stop offset="100%" stop-color="#fbbf24" stop-opacity="0.05" />
+              </linearGradient>
+              <linearGradient id="highlight-grad-3sig" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#f87171" stop-opacity="0.4" />
+                <stop offset="100%" stop-color="#f87171" stop-opacity="0.05" />
+              </linearGradient>
+              <linearGradient id="highlight-grad-custom" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.4" />
+                <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.05" />
+              </linearGradient>
+            </defs>
+
+            <!-- グリッド背景 -->
+            <g id="grid-group"></g>
+
+            <!-- 塗りつぶしハイライト領域 -->
+            <path id="highlight-area" class="highlight-poly" fill="url(#highlight-grad-1sig)"></path>
+
+            <!-- 基本カーブ（背景うっすら全体） -->
+            <path id="base-curve" stroke="#cbd5e1" stroke-width="1.5" fill="url(#curve-grad)" stroke-dasharray="2, 2"></path>
+
+            <!-- メインベルカーブ（動的） -->
+            <path id="bell-curve" class="bell-curve"></path>
+
+            <!-- 補助線グループ -->
+            <g id="lines-group">
+              <!-- 平均線 (μ) -->
+              <line id="mean-line" class="reference-line mean-line" y1="40" y2="390"></line>
+              <!-- ±1σ -->
+              <line id="line-minus1sig" class="reference-line" stroke="#10b981" y1="40" y2="390"></line>
+              <line id="line-plus1sig" class="reference-line" stroke="#10b981" y1="40" y2="390"></line>
+              <!-- ±2σ -->
+              <line id="line-minus2sig" class="reference-line" stroke="#f59e0b" y1="40" y2="390"></line>
+              <line id="line-plus2sig" class="reference-line" stroke="#f59e0b" y1="40" y2="390"></line>
+              <!-- ±3σ -->
+              <line id="line-minus3sig" class="reference-line" stroke="#ef4444" y1="40" y2="390"></line>
+              <line id="line-plus3sig" class="reference-line" stroke="#ef4444" y1="40" y2="390"></line>
+            </g>
+
+            <!-- ユーザーの入力スコアプロット用 -->
+            <g id="score-plot-group" style="display:none;">
+              <line id="score-vertical-line" class="score-line" y1="40" y2="390"></line>
+              <circle id="score-dot" class="score-dot" r="6"></circle>
+              <!-- ツールチップ風テキスト背景 -->
+              <rect id="tooltip-bg" fill="rgba(30, 41, 59, 0.9)" rx="6" ry="6" height="40" width="160"></rect>
+              <text id="tooltip-text" fill="white" font-size="11" font-weight="600" text-anchor="middle" y="0"></text>
+            </g>
+
+            <!-- 軸 -->
+            <line class="axis-line" x1="50" y1="390" x2="610" y2="390"></line> <!-- x軸 -->
+            <line class="axis-line" x1="50" y1="40" x2="50" y2="390"></line>  <!-- y軸 -->
+
+            <!-- ラベル・テキストグループ -->
+            <g id="labels-group"></g>
+          </svg>
+        </div>
+
+        <!-- クイック切り替えボタン -->
+        <div class="rule-selector">
+          <button class="rule-btn active" data-rule="1sig">
+            <span>±1σの範囲</span>
+            <span class="percent-badge">約 68%</span>
+          </button>
+          <button class="rule-btn" data-rule="2sig">
+            <span>±2σの範囲</span>
+            <span class="percent-badge">約 95%</span>
+          </button>
+          <button class="rule-btn" data-rule="3sig">
+            <span>±3σの範囲</span>
+            <span class="percent-badge">約 99.7%</span>
+          </button>
+          <button class="rule-btn" data-rule="custom">
+            <span>カスタム設定</span>
+            <span class="percent-badge">自由指定</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 右カラム：コントロール＆解説 -->
+      <div class="card controls-container">
+        
+        <!-- シミュレーター設定 -->
+        <div class="form-group">
+          <div class="form-label">
+            <span>平均値 (μ)</span>
+            <span id="mean-val" class="form-value">50</span>
+          </div>
+          <input type="range" id="mean-slider" class="slider" min="30" max="70" value="50" step="1">
+          <div class="slider-desc">分布の「中心」の位置をずらします。</div>
+        </div>
+
+        <div class="form-group">
+          <div class="form-label">
+            <span>標準偏差 (σ)</span>
+            <span id="stddev-val" class="form-value">10</span>
+          </div>
+          <input type="range" id="stddev-slider" class="slider" min="5" max="20" value="10" step="0.5">
+          <div class="slider-desc">データの「散らばり（山の広がり）」を変えます。値が小さいと鋭く尖り、大きいと平らになります。</div>
+        </div>
+
+        <!-- カスタムスライダー（カスタム選択時のみ表示） -->
+        <div id="custom-range-controls" class="custom-range-container">
+          <div class="form-label">
+            <span>カスタム範囲の指定 [ a , b ]</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:0.5rem;">
+            <div style="display:flex; justify-content:space-between; font-size:0.8rem; font-weight:600;">
+              <span>開始値 (a): <span id="custom-a-val" style="color:#0ea5e9;">40</span></span>
+              <span>終了値 (b): <span id="custom-b-val" style="color:#0ea5e9;">60</span></span>
+            </div>
+            <input type="range" id="custom-a-slider" class="slider" min="0" max="100" value="40" step="1">
+            <input type="range" id="custom-b-slider" class="slider" min="0" max="100" value="60" step="1">
+          </div>
+        </div>
+
+        <!-- 現在のハイライトエリア情報 -->
+        <div id="info-panel" class="info-card color-1sig">
+          <div class="info-card-title">
+            <span id="info-title">平均値から ±1倍の標準偏差 (μ ± 1σ)</span>
+            <span id="info-badge" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; border-radius: 9999px; background: white; font-weight: 700; border: 1px solid;">偏差値 40 〜 60</span>
+          </div>
+          <div class="info-card-math">
+            <span id="info-math-range">40.0 〜 60.0</span>
+            <div style="margin-left: auto; text-align: right;">
+              <span style="font-size:0.75rem; color:var(--text-muted); display:block; line-height:1;">データの割合</span>
+              <strong id="info-percentage" style="font-size: 1.6rem; font-weight:800; font-family: var(--font-outfit);">68.27%</strong>
+            </div>
+          </div>
+          <div id="info-desc" class="info-card-desc">
+            データ全体の<strong>およそ 68%</strong> がこの範囲に入ります。
+            受験の「偏差値」で言うと、平均的な成績である<strong>偏差値40〜60</strong>の間に、全受験生の約3人に2人が収まるイメージです。
+          </div>
+        </div>
+
+        <!-- スコアチェッカー -->
+        <div class="score-checker">
+          <div class="form-label" style="margin-bottom: 0;">
+            <span>自分のデータを当てはめてみる</span>
+          </div>
+          <div class="slider-desc" style="margin-top: -0.25rem; margin-bottom: 0.25rem;">特定のスコアがこの分布の中でどの位置にあるか測定します。</div>
+          <div class="score-input-wrapper">
+            <input type="number" id="user-score-input" class="score-input" placeholder="数値を入力 (例: 65)" min="0" max="100" value="65">
+          </div>
+          <div class="score-result">
+            <div class="score-result-item">
+              <div class="score-result-label">平均からの距離</div>
+              <div id="res-distance" class="score-result-val">---</div>
+            </div>
+            <div class="score-result-item">
+              <div class="score-result-label">偏差値換算</div>
+              <div id="res-deviation" class="score-result-val">---</div>
+            </div>
+            <div class="score-result-item">
+              <div class="score-result-label">上位から</div>
+              <div id="res-percentile" class="score-result-val highlight">---</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- 下部：FAQ/詳細解説セクション -->
+    <div class="faq-section">
+      <h2 class="card-title" style="margin-bottom: 0.5rem; border-bottom: none; padding-bottom: 0;">
+        <span class="card-title-text">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
+          </svg>
+          正規分布の「重要なルール（経験則）」を詳しく学ぶ
+        </span>
+      </h2>
+
+      <!-- 質問1 -->
+      <div class="faq-item open">
+        <button class="faq-trigger" onclick="toggleFaq(this)">
+          <span>Q. 「68% - 95% - 99.7% ルール（経験則）」とは何ですか？</span>
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+          </svg>
+        </button>
+        <div class="faq-content" style="max-height: 1000px;">
+          <div class="faq-content-inner">
+            <p>
+              左右対称の美しい山型のカーブを描く「正規分布」では、平均値（$\mu$）から標準偏差（$\sigma$）の何倍離れているかによって、そこに含まれるデータの割合が統計的に綺麗に決まっています。
+            </p>
+            <div class="highlight-box">
+              <p>主に以下の3つの数字をセットで覚えておくと、試験や実務で役立ちます：</p>
+              <ul style="margin-left: 1.5rem; margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.25rem;">
+                <li><span class="text-success">μ ± 1σ の範囲：</span> 全体の <strong>およそ 68%</strong>（正確には 68.27%）</li>
+                <li><span class="text-warning">μ ± 2σ の範囲：</span> 全体の <strong>およそ 95%</strong>（正確には 95.45%）</li>
+                <li><span class="text-danger">μ ± 3σ の範囲：</span> 全体の <strong>およそ 99.7%</strong>（正確には 99.73%）</li>
+              </ul>
+            </div>
+            <p>
+              このルールは、英語圏では <strong>Empirical Rule (経験則)</strong> や <strong>68-95-99.7 rule</strong> と呼ばれ、統計学における極めて基本的な性質として利用されています。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 質問2 -->
+      <div class="faq-item">
+        <button class="faq-trigger" onclick="toggleFaq(this)">
+          <span>Q. 「偏差値」とこのルールの関係を教えてください。</span>
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+          </svg>
+        </button>
+        <div class="faq-content">
+          <div class="faq-content-inner">
+            <p>
+              実は「偏差値」とは、<strong>平均値を 50、標準偏差を 10 に固定した正規分布</strong>の確率変数の値そのものです。
+            </p>
+            <p>
+              このため、偏差値スケールと $1\sigma \sim 3\sigma$ は完全に連動しています。
+            </p>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 0.5rem;">
+              <thead>
+                <tr style="background-color: #f1f5f9; border-bottom: 2px solid var(--border-color);">
+                  <th style="padding: 0.5rem; text-align: left;">範囲</th>
+                  <th style="padding: 0.5rem; text-align: left;">対応する偏差値</th>
+                  <th style="padding: 0.5rem; text-align: left;">含まれる割合</th>
+                  <th style="padding: 0.5rem; text-align: left;">外れる割合（超レアケース）</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                  <td style="padding: 0.5rem;" class="text-success">μ ± 1σ</td>
+                  <td style="padding: 0.5rem; font-weight: 600;">偏差値 40 〜 60</td>
+                  <td style="padding: 0.5rem; font-weight: 700;">約 68%</td>
+                  <td style="padding: 0.5rem;">約 32% (約3人に1人)</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                  <td style="padding: 0.5rem;" class="text-warning">μ ± 2σ</td>
+                  <td style="padding: 0.5rem; font-weight: 600;">偏差値 30 〜 70</td>
+                  <td style="padding: 0.5rem; font-weight: 700;">約 95%</td>
+                  <td style="padding: 0.5rem;">約 5% (20人に1人レベル)</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                  <td style="padding: 0.5rem;" class="text-danger">μ ± 3σ</td>
+                  <td style="padding: 0.5rem; font-weight: 600;">偏差値 20 〜 80</td>
+                  <td style="padding: 0.5rem; font-weight: 700;">約 99.7%</td>
+                  <td style="padding: 0.5rem;">約 0.3% (1000回に3回の超レアケース)</td>
+                </tr>
+              </tbody>
+            </table>
+            <p style="margin-top: 0.5rem;">
+              例えば、模試で「偏差値70」を取った場合、それは $+2\sigma$ の地点にいます。偏差値30〜70の範囲（約95%）の外側の上位2.5%に属することを意味するため、非常に優秀な成績であることがグラフィカルに一瞬で理解できます。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 質問3 -->
+      <div class="faq-item">
+        <button class="faq-trigger" onclick="toggleFaq(this)">
+          <span>Q. 実務やデータ分析（品質管理）ではどのように応用されますか？</span>
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+          </svg>
+        </button>
+        <div class="faq-content">
+          <div class="faq-content-inner">
+            <p>
+              この経験則は、ビジネスや製造業の<strong>品質管理（QC）</strong>において極めて重要な基準となっています。
+            </p>
+            <p>
+              <strong>1. 3シグマ管理法 (3σルール)</strong><br>
+              製造ラインで生産される製品の寸法や重量などのバラつきを管理する際、平均から $\pm 3\sigma$ （99.73%）の範囲を「管理限界線」として設定します。この限界線を飛び出す製品（全体のわずか0.27%）が検出された場合、「偶然のバラつきではなく、ラインに異常が発生した可能性が高い」と判断し、機械の点検や調整を行います。
+            </p>
+            <p>
+              <strong>2. シックスシグマ (6σ)</strong><br>
+              さらに厳格な品質管理手法として「シックスシグマ」があります。これは欠陥率を「100万回に3.4回」以下（$\pm 6\sigma$ の範囲内）に抑えることを目指す経営・品質改善活動です。
+            </p>
+            <p>
+              <strong>3. データ分析における外れ値検出</strong><br>
+              一般のデータ分析において、平均から $\pm 3\sigma$ を超える極端なデータは「外れ値（異常値）」として扱い、ノイズとして分析から除外するか、個別に調査する対象とします。
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // --- FAQ アコーディオン ---
+    function toggleFaq(btn) {
+      const item = btn.parentElement;
+      const content = btn.nextElementSibling;
+      const isOpen = item.classList.contains('open');
+      
+      // 他のを閉じる
+      document.querySelectorAll('.faq-item').forEach(el => {
+        if(el !== item) {
+          el.classList.remove('open');
+          el.querySelector('.faq-content').style.maxHeight = null;
+        }
+      });
+
+      if (isOpen) {
+        item.classList.remove('open');
+        content.style.maxHeight = null;
+      } else {
+        item.classList.add('open');
+        content.style.maxHeight = content.scrollHeight + "px";
+      }
+    }
+
+    // --- 統計計算ヘルパー ---
+    
+    // 確率密度関数 (PDF)
+    function normalPDF(x, mean, stdDev) {
+      const exponent = -Math.pow(x - mean, 2) / (2 * Math.pow(stdDev, 2));
+      return (1 / (stdDev * Math.sqrt(2 * Math.PI))) * Math.exp(exponent);
+    }
+
+    // 誤差関数 (erf) の近似計算 (Abramowitz and Stegun 近似)
+    function erf(x) {
+      // 符号の保存
+      const sign = (x >= 0) ? 1 : -1;
+      x = Math.abs(x);
+
+      // 定数定義
+      const p  = 0.3275911;
+      const a1 = 0.254829592;
+      const a2 = -0.284496736;
+      const a3 = 1.421413741;
+      const a4 = -1.453152027;
+      const a5 = 1.061405429;
+
+      const t = 1.0 / (1.0 + p * x);
+      const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+
+      return sign * y;
+    }
+
+    // 累積分布関数 (CDF)
+    function normalCDF(x, mean, stdDev) {
+      return 0.5 * (1.0 + erf((x - mean) / (stdDev * Math.sqrt(2.0))));
+    }
+
+    // 指定範囲 [a, b] の累積確率（面積）
+    function getRangeProbability(a, b, mean, stdDev) {
+      if (a > b) return 0;
+      return normalCDF(b, mean, stdDev) - normalCDF(a, mean, stdDev);
+    }
+
+    // --- 描画エンジン (SVG) ---
+    const svg = document.getElementById('normal-svg');
+    const bellCurve = document.getElementById('bell-curve');
+    const baseCurve = document.getElementById('base-curve');
+    const highlightArea = document.getElementById('highlight-area');
+    const gridGroup = document.getElementById('grid-group');
+    const labelsGroup = document.getElementById('labels-group');
+    
+    // スライダー・コントロール
+    const meanSlider = document.getElementById('mean-slider');
+    const stddevSlider = document.getElementById('stddev-slider');
+    const meanVal = document.getElementById('mean-val');
+    const stddevVal = document.getElementById('stddev-val');
+    
+    const customRangeControls = document.getElementById('custom-range-controls');
+    const customASlider = document.getElementById('custom-a-slider');
+    const customBSlider = document.getElementById('custom-b-slider');
+    const customAVal = document.getElementById('custom-a-val');
+    const customBVal = document.getElementById('custom-b-val');
+    
+    const infoPanel = document.getElementById('info-panel');
+    const infoTitle = document.getElementById('info-title');
+    const infoBadge = document.getElementById('info-badge');
+    const infoMathRange = document.getElementById('info-math-range');
+    const infoPercentage = document.getElementById('info-percentage');
+    const infoDesc = document.getElementById('info-desc');
+    
+    // スコアチェッカー
+    const userScoreInput = document.getElementById('user-score-input');
+    const resDistance = document.getElementById('res-distance');
+    const resDeviation = document.getElementById('res-deviation');
+    const resPercentile = document.getElementById('res-percentile');
+    const scorePlotGroup = document.getElementById('score-plot-group');
+    const scoreDot = document.getElementById('score-dot');
+    const scoreVerticalLine = document.getElementById('score-vertical-line');
+    const tooltipBg = document.getElementById('tooltip-bg');
+    const tooltipText = document.getElementById('tooltip-text');
+
+    // グラフの配置パラメータ
+    const width = 650;
+    const height = 450;
+    const padding = { top: 60, right: 40, bottom: 80, left: 50 };
+    const graphWidth = width - padding.left - padding.right;
+    const graphHeight = height - padding.top - padding.bottom;
+    
+    // スケール変換関数
+    // x値 (0 〜 100) -> SVG の X 座標
+    function scaleX(x) {
+      return padding.left + (x / 100) * graphWidth;
+    }
+    
+    // Y確率密度 (0 〜 0.095) -> SVG の Y 座標
+    const maxDensity = 0.095; // 固定して形状比較を容易に
+    function scaleY(y) {
+      return padding.top + graphHeight - (y / maxDensity) * graphHeight;
+    }
+
+    // 現在の状態
+    let currentRule = '1sig'; // '1sig', '2sig', '3sig', 'custom'
+
+    // グリッド線と静的な軸ラベルの描画
+    function drawGrid() {
+      gridGroup.innerHTML = '';
+      
+      // 横軸グリッド線（値: 10, 20, ..., 90）
+      for (let x = 10; x <= 90; x += 10) {
+        const svgX = scaleX(x);
+        // グリッド縦線
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('class', 'grid-line');
+        line.setAttribute('x1', svgX);
+        line.setAttribute('y1', padding.top);
+        line.setAttribute('x2', svgX);
+        line.setAttribute('y2', padding.top + graphHeight);
+        gridGroup.appendChild(line);
+      }
+
+      // 縦軸グリッド線（確率密度）
+      for (let y = 0.02; y <= 0.08; y += 0.02) {
+        const svgY = scaleY(y);
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('class', 'grid-line');
+        line.setAttribute('x1', padding.left);
+        line.setAttribute('y1', svgY);
+        line.setAttribute('x2', padding.left + graphWidth);
+        line.setAttribute('y2', svgY);
+        gridGroup.appendChild(line);
+
+        // Y軸のラベル
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('class', 'graph-label');
+        text.setAttribute('x', padding.left - 8);
+        text.setAttribute('y', svgY + 4);
+        text.setAttribute('text-anchor', 'end');
+        text.textContent = y.toFixed(2);
+        gridGroup.appendChild(text);
+      }
+      
+      // Y軸タイトル
+      const yTitle = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      yTitle.setAttribute('class', 'graph-label bold');
+      yTitle.setAttribute('x', padding.left);
+      yTitle.setAttribute('y', padding.top - 15);
+      yTitle.setAttribute('text-anchor', 'middle');
+      yTitle.textContent = '確率密度';
+      gridGroup.appendChild(yTitle);
+
+      // X軸タイトル (データ値)
+      const xTitle = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      xTitle.setAttribute('class', 'graph-label bold');
+      xTitle.setAttribute('x', padding.left + graphWidth / 2);
+      xTitle.setAttribute('y', padding.top + graphHeight + 42);
+      xTitle.textContent = 'データ値 (x)';
+      gridGroup.appendChild(xTitle);
+
+      // X軸タイトル (偏差値)
+      const devTitle = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      devTitle.setAttribute('class', 'graph-label bold');
+      devTitle.setAttribute('x', padding.left + graphWidth / 2);
+      devTitle.setAttribute('y', padding.top + graphHeight + 68);
+      devTitle.setAttribute('fill', '#4f46e5');
+      devTitle.textContent = '偏差値換算';
+      gridGroup.appendChild(devTitle);
+    }
+
+    // グラフとUIの更新
+    function update() {
+      const mean = parseFloat(meanSlider.value);
+      const stdDev = parseFloat(stddevSlider.value);
+      
+      meanVal.textContent = mean;
+      stddevVal.textContent = stdDev;
+
+      // 1. 基本ベルカーブのパス作成 (背景の点線用)
+      let baseD = '';
+      for (let x = 0; x <= 100; x += 0.5) {
+        const svgX = scaleX(x);
+        const svgY = scaleY(normalPDF(x, 50, 10));
+        baseD += `${x === 0 ? 'M' : 'L'} ${svgX} ${svgY}`;
+      }
+      baseCurve.setAttribute('d', baseD);
+
+      // 2. メインのベルカーブを描画 (現在の μ, σ)
+      let bellD = '';
+      for (let x = 0; x <= 100; x += 0.5) {
+        const svgX = scaleX(x);
+        const svgY = scaleY(normalPDF(x, mean, stdDev));
+        bellD += `${x === 0 ? 'M' : 'L'} ${svgX} ${svgY}`;
+      }
+      bellCurve.setAttribute('d', bellD);
+
+      // 3. 補助線と動的な横軸目盛りの更新
+      updateReferenceLines(mean, stdDev);
+
+      // 4. ハイライト領域と情報の更新
+      updateHighlight(mean, stdDev);
+
+      // 5. ユーザーデータのプロット
+      updateScoreChecker(mean, stdDev);
+    }
+
+    // 補助線とラベルの位置・テキストを更新
+    function updateReferenceLines(mean, stdDev) {
+      const lines = {
+        'mean-line': mean,
+        'line-minus1sig': mean - stdDev,
+        'line-plus1sig': mean + stdDev,
+        'line-minus2sig': mean - 2 * stdDev,
+        'line-plus2sig': mean + 2 * stdDev,
+        'line-minus3sig': mean - 3 * stdDev,
+        'line-plus3sig': mean + 3 * stdDev
+      };
+
+      for (const [id, val] of Object.entries(lines)) {
+        const lineEl = document.getElementById(id);
+        const svgX = scaleX(val);
+        if (svgX < padding.left || svgX > padding.left + graphWidth) {
+          lineEl.setAttribute('style', 'display: none;');
+        } else {
+          lineEl.removeAttribute('style');
+          lineEl.setAttribute('x1', svgX);
+          lineEl.setAttribute('x2', svgX);
+          
+          const yVal = normalPDF(val, mean, stdDev);
+          lineEl.setAttribute('y1', scaleY(yVal));
+        }
+      }
+
+      labelsGroup.innerHTML = '';
+
+      const points = [
+        { label: 'μ-3σ', val: mean - 3 * stdDev, color: '#ef4444' },
+        { label: 'μ-2σ', val: mean - 2 * stdDev, color: '#f59e0b' },
+        { label: 'μ-1σ', val: mean - 1 * stdDev, color: '#10b981' },
+        { label: 'μ', val: mean, color: '#a855f7' },
+        { label: 'μ+1σ', val: mean + 1 * stdDev, color: '#10b981' },
+        { label: 'μ+2σ', val: mean + 2 * stdDev, color: '#f59e0b' },
+        { label: 'μ+3σ', val: mean + 3 * stdDev, color: '#ef4444' }
+      ];
+
+      points.forEach(pt => {
+        const svgX = scaleX(pt.val);
+        if (svgX >= padding.left - 5 && svgX <= padding.left + graphWidth + 5) {
+          const textSym = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          textSym.setAttribute('class', 'graph-label bold');
+          textSym.setAttribute('x', svgX);
+          textSym.setAttribute('y', padding.top + graphHeight + 16);
+          textSym.setAttribute('fill', pt.color);
+          textSym.textContent = pt.label;
+          labelsGroup.appendChild(textSym);
+
+          const textVal = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          textVal.setAttribute('class', 'graph-label');
+          textVal.setAttribute('x', svgX);
+          textVal.setAttribute('y', padding.top + graphHeight + 30);
+          textVal.textContent = pt.val.toFixed(1);
+          labelsGroup.appendChild(textVal);
+
+          const deviationScore = 50 + 10 * (pt.val - mean) / stdDev;
+          const textDev = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          textDev.setAttribute('class', 'graph-label bold');
+          textDev.setAttribute('x', svgX);
+          textDev.setAttribute('y', padding.top + graphHeight + 56);
+          textDev.setAttribute('fill', '#6366f1');
+          textDev.textContent = Math.round(deviationScore);
+          labelsGroup.appendChild(textDev);
+        }
+      });
+    }
+
+    // ハイライト領域（塗りつぶし）と解説パネルの更新
+    function updateHighlight(mean, stdDev) {
+      let startX, endX;
+      let fillGradient = 'url(#highlight-grad-1sig)';
+
+      if (currentRule === '1sig') {
+        startX = mean - stdDev;
+        endX = mean + stdDev;
+        fillGradient = 'url(#highlight-grad-1sig)';
+        infoPanel.className = 'info-card color-1sig';
+        infoTitle.textContent = '平均値から ±1倍の標準偏差 (μ ± 1σ)';
+        infoBadge.textContent = '偏差値 40 〜 60';
+        infoBadge.style.color = 'var(--color-1sig-text)';
+        infoBadge.style.borderColor = 'var(--color-1sig-border)';
+        infoDesc.innerHTML = `
+          データ全体の<strong>およそ 68%</strong> がこの範囲に入ります。<br>
+          受験の「偏差値」で言うと、平均的な成績である<strong>偏差値40〜60</strong>の間に、全体の約3人に2人が収まるイメージです。
+          実務でも、最も高頻度で発生する中心的なデータ層です。
+        `;
+      } else if (currentRule === '2sig') {
+        startX = mean - 2 * stdDev;
+        endX = mean + 2 * stdDev;
+        fillGradient = 'url(#highlight-grad-2sig)';
+        infoPanel.className = 'info-card color-2sig';
+        infoTitle.textContent = '平均値から ±2倍の標準偏差 (μ ± 2σ)';
+        infoBadge.textContent = '偏差値 30 〜 70';
+        infoBadge.style.color = 'var(--color-2sig-text)';
+        infoBadge.style.borderColor = 'var(--color-2sig-border)';
+        infoDesc.innerHTML = `
+          データ全体の<strong>およそ 95%</strong>（より正確には 95.45%） がこの範囲に入ります。<br>
+          偏差値で言うと<strong>偏差値30〜70</strong>の範囲です。
+          日常的なデータや測定値の<strong>ほとんどすべて</strong>がこの範囲内に収まるため、この範囲外に出るデータ（約5%）はやや珍しいケースと言えます。
+        `;
+      } else if (currentRule === '3sig') {
+        startX = mean - 3 * stdDev;
+        endX = mean + 3 * stdDev;
+        fillGradient = 'url(#highlight-grad-3sig)';
+        infoPanel.className = 'info-card color-3sig';
+        infoTitle.textContent = '平均値から ±3倍の標準偏差 (μ ± 3σ)';
+        infoBadge.textContent = '偏差値 20 〜 80';
+        infoBadge.style.color = 'var(--color-3sig-text)';
+        infoBadge.style.borderColor = 'var(--color-3sig-border)';
+        infoDesc.innerHTML = `
+          データ全体の<strong>およそ 99.7%</strong>（より正確には 99.73%）が入ります。<br>
+          偏差値で言うと<strong>偏差値20〜80</strong>の範囲です。
+          ここから外れるデータは、わずか <strong>0.3% 程度</strong>（1000回に3回レベル）の超レアケースです。
+          品質管理においては、この範囲（3σ）を超える製品が出た場合、製造プロセスに「異常」が発生したと見なす重要な基準ライン（管理限界）になります。
+        `;
+      } else {
+        startX = parseFloat(customASlider.value);
+        endX = parseFloat(customBSlider.value);
+        if (startX > endX) {
+          const temp = startX;
+          startX = endX;
+          endX = temp;
+        }
+        fillGradient = 'url(#highlight-grad-custom)';
+        infoPanel.className = 'info-card color-custom';
+        infoTitle.textContent = 'カスタム指定した範囲 [ a , b ]';
+        
+        const devA = Math.round(50 + 10 * (startX - mean) / stdDev);
+        const devB = Math.round(50 + 10 * (endX - mean) / stdDev);
+        infoBadge.textContent = `偏差値換算: ${devA} 〜 ${devB}`;
+        infoBadge.style.color = 'var(--color-custom-text)';
+        infoBadge.style.borderColor = 'var(--color-custom-border)';
+        
+        infoDesc.innerHTML = `
+          スライダーで指定した区間 [${startX.toFixed(1)} 〜 ${endX.toFixed(1)}] の確率を計算しています。<br>
+          平均からのズレは、開始点が <strong>${((startX - mean) / stdDev).toFixed(2)}σ</strong>、終了点が <strong>${((endX - mean) / stdDev).toFixed(2)}σ</strong> です。
+        `;
+      }
+
+      infoMathRange.textContent = `${startX.toFixed(1)} 〜 ${endX.toFixed(1)}`;
+      
+      const prob = getRangeProbability(startX, endX, mean, stdDev);
+      infoPercentage.textContent = (prob * 100).toFixed(2) + '%';
+      
+      let pathD = '';
+      const step = 0.5;
+      
+      const startSvgX = scaleX(Math.max(0, startX));
+      const baselineY = scaleY(0);
+      pathD += `M ${startSvgX} ${baselineY}`;
+
+      for (let x = Math.max(0, startX); x <= Math.min(100, endX); x += step) {
+        const svgX = scaleX(x);
+        const svgY = scaleY(normalPDF(x, mean, stdDev));
+        pathD += ` L ${svgX} ${svgY}`;
+      }
+
+      const endSvgX = scaleX(Math.min(100, endX));
+      pathD += ` L ${endSvgX} ${baselineY} Z`;
+
+      highlightArea.setAttribute('d', pathD);
+      highlightArea.setAttribute('fill', fillGradient);
+    }
+
+    // スコアチェッカーの更新
+    function updateScoreChecker(mean, stdDev) {
+      const val = parseFloat(userScoreInput.value);
+      if (isNaN(val) || val < 0 || val > 100) {
+        resDistance.textContent = '---';
+        resDeviation.textContent = '---';
+        resPercentile.textContent = '---';
+        scorePlotGroup.style.display = 'none';
+        return;
+      }
+
+      const z = (val - mean) / stdDev;
+      const deviation = 50 + 10 * z;
+      const probAbove = 1.0 - normalCDF(val, mean, stdDev);
+      const percentile = probAbove * 100;
+
+      const zSign = z >= 0 ? '+' : '';
+      resDistance.textContent = `${zSign}${z.toFixed(2)} σ`;
+      resDeviation.textContent = Math.round(deviation);
+      resPercentile.textContent = `上位 ${percentile.toFixed(2)}%`;
+
+      scorePlotGroup.style.display = '';
+      
+      const svgX = scaleX(val);
+      const pdfY = normalPDF(val, mean, stdDev);
+      const svgY = scaleY(pdfY);
+
+      scoreDot.setAttribute('cx', svgX);
+      scoreDot.setAttribute('cy', svgY);
+
+      scoreVerticalLine.setAttribute('x1', svgX);
+      scoreVerticalLine.setAttribute('x2', svgX);
+      scoreVerticalLine.setAttribute('y1', svgY);
+      scoreVerticalLine.setAttribute('y2', scaleY(0));
+
+      let tooltipX = svgX;
+      let tooltipY = svgY - 55;
+
+      if (tooltipX < padding.left + 80) tooltipX = padding.left + 80;
+      if (tooltipX > padding.left + graphWidth - 80) tooltipX = padding.left + graphWidth - 80;
+      if (tooltipY < padding.top) tooltipY = svgY + 25;
+
+      tooltipBg.setAttribute('x', tooltipX - 80);
+      tooltipBg.setAttribute('y', tooltipY - 20);
+      
+      tooltipText.setAttribute('x', tooltipX);
+      tooltipText.setAttribute('y', tooltipY + 4);
+      
+      // textContentを直接指定し、tspanは使わない形式にして確実に描画する
+      tooltipText.innerHTML = '';
+      
+      const tspan1 = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      tspan1.setAttribute('x', tooltipX);
+      tspan1.setAttribute('dy', '-6');
+      tspan1.textContent = `値: ${val.toFixed(1)} (${zSign}${z.toFixed(2)}σ)`;
+      
+      const tspan2 = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      tspan2.setAttribute('x', tooltipX);
+      tspan2.setAttribute('dy', '15');
+      tspan2.textContent = `上位 ${percentile.toFixed(2)}% (偏差値 ${Math.round(deviation)})`;
+      
+      tooltipText.appendChild(tspan1);
+      tooltipText.appendChild(tspan2);
+    }
+
+    // --- イベントリスナーの設定 ---
+
+    document.querySelectorAll('.rule-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.rule-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        currentRule = btn.dataset.rule;
+        
+        if (currentRule === 'custom') {
+          customRangeControls.style.display = 'flex';
+        } else {
+          customRangeControls.style.display = 'none';
+        }
+
+        update();
+      });
+    });
+
+    meanSlider.addEventListener('input', update);
+    stddevSlider.addEventListener('input', update);
+    
+    customASlider.addEventListener('input', () => {
+      customAVal.textContent = parseFloat(customASlider.value).toFixed(0);
+      update();
+    });
+    customBSlider.addEventListener('input', () => {
+      customBVal.textContent = parseFloat(customBSlider.value).toFixed(0);
+      update();
+    });
+
+    userScoreInput.addEventListener('input', update);
+
+    drawGrid();
+    update();
+    
+    window.addEventListener('resize', () => {
+      drawGrid();
+      update();
+    });
+  </script>
+</body>
+</html>
